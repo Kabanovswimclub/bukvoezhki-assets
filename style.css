@@ -1,20 +1,13 @@
 :root{
-  --ink:#3a2e2a;
-  --paper-top:#fdf3e7;
-  --paper-bot:#fce3cf;
-  --ghost:#e9d6bd;
-  --slot-line:#d8c2a4;
-  --accent:#2bb3a3;
-  --accent-press:#1f9486;
+  --ink:#3a2e2a; --paper-top:#fdf3e7; --paper-bot:#fce3cf;
+  --ghost:#e9d6bd; --slot-line:#d8c2a4; --accent:#2bb3a3; --accent-press:#1f9486;
   --c1:#ff6b6b; --c2:#ffc93c; --c3:#6bcb77; --c4:#4d96ff; --c5:#b388eb; --c6:#ff924c;
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
 html,body{margin:0; height:100%; overflow:hidden;}
 body{
-  font-family:'Nunito',system-ui,sans-serif;
-  color:var(--ink);
-  background:linear-gradient(180deg,var(--paper-top),var(--paper-bot));
-  background-attachment:fixed;
+  font-family:'Nunito',system-ui,sans-serif; color:var(--ink);
+  background:linear-gradient(180deg,var(--paper-top),var(--paper-bot)); background-attachment:fixed;
   touch-action:none; user-select:none; -webkit-user-select:none;
 }
 .screen{position:fixed; inset:0; display:flex; flex-direction:column;}
@@ -26,14 +19,13 @@ body{
 #picker p{margin:0 0 18px; font-size:17px; opacity:.7; font-weight:700;}
 .word-tiles{display:flex; flex-wrap:wrap; gap:16px; justify-content:center; max-width:520px;}
 .word-tile{
-  width:140px; height:150px; border:none; border-radius:26px; cursor:pointer;
+  min-width:130px; height:112px; border:none; border-radius:24px; cursor:pointer; padding:0 22px;
   background:#fff; box-shadow:0 8px 0 rgba(0,0,0,.07), 0 14px 24px rgba(0,0,0,.08);
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+  display:flex; align-items:center; justify-content:center;
   font-family:'Nunito',sans-serif; transition:transform .12s ease, box-shadow .12s ease;
 }
 .word-tile:active{transform:translateY(4px); box-shadow:0 4px 0 rgba(0,0,0,.07), 0 8px 16px rgba(0,0,0,.08);}
-.word-tile .pic{font-size:60px; line-height:1;}
-.word-tile .lbl{font-weight:900; font-size:22px; letter-spacing:2px;}
+.word-tile .lbl{font-weight:900; font-size:30px; letter-spacing:3px;}
 
 /* ---------- Игровой экран ---------- */
 #game{padding:14px 12px 20px;}
@@ -44,48 +36,47 @@ body{
   display:flex; align-items:center; justify-content:center; transition:transform .1s;
 }
 .iconbtn:active{transform:translateY(3px);}
-.stage{flex:1; display:flex; flex-direction:column; justify-content:space-between; position:relative;}
 
-/* Слоты */
-.slots{display:flex; gap:10px; justify-content:center; align-items:flex-end; margin-top:18px; flex-wrap:wrap;}
+/* Сцена — общий слой с абсолютным позиционированием */
+.stage{flex:1; position:relative;}
+
+/* Слоты — горизонтальный ряд ПО ЦЕНТРУ экрана */
+.slots{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); display:flex; gap:10px; z-index:2;}
 .slot{
-  width:74px; height:90px; border-radius:18px; background:rgba(255,255,255,.35);
+  width:74px; height:90px; border-radius:18px; background:rgba(255,255,255,.45);
   border:3px dashed var(--slot-line); display:flex; align-items:center; justify-content:center;
   font-weight:900; font-size:50px; color:var(--ghost); transition:background .15s, border-color .15s;
 }
 .slot.target{color:var(--ghost);}
-.slot.over{border-color:var(--accent); background:rgba(43,179,163,.12);}
+.slot.over{border-color:var(--accent); background:rgba(43,179,163,.14);}
 .slot.filled{border-style:solid; border-color:transparent; background:transparent;}
 
-/* Зона «оживления» слова */
-.reward{flex:1; display:flex; align-items:center; justify-content:center; position:relative; min-height:120px;}
+/* Зона «оживления» слова — оверлей по центру */
+.reward{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:5; pointer-events:none;}
 .reward .word-pic{font-size:120px; line-height:1; will-change:transform;}
-.reward img,.reward video{max-width:70%; max-height:38vh; border-radius:24px;}
+.reward img,.reward video{max-width:74%; max-height:42vh; border-radius:24px;}
 .reward.show .word-pic,.reward.show img,.reward.show video{animation:popIn .5s cubic-bezier(.18,1.4,.4,1) both, breathe 2.2s ease-in-out .5s infinite;}
 @keyframes popIn{0%{transform:scale(.2) rotate(-12deg); opacity:0;} 100%{transform:scale(1) rotate(0); opacity:1;}}
-@keyframes breathe{0%,100%{transform:scale(1) rotate(-2deg);} 50%{transform:scale(1.06) rotate(2deg);}}
+@keyframes breathe{0%,100%{transform:scale(1) rotate(-2deg);} 50%{transform:scale(1.05) rotate(2deg);}}
 .reward.out .word-pic,.reward.out img,.reward.out video{animation:popOut .5s cubic-bezier(.5,-0.3,.7,.5) forwards;}
 @keyframes popOut{0%{transform:scale(1) rotate(0); opacity:1;} 100%{transform:scale(.25) rotate(10deg); opacity:0;}}
 
-/* Лоток с буквами */
-.tray{display:flex; gap:12px; justify-content:center; align-items:center; flex-wrap:wrap; min-height:96px; padding-top:8px;}
+/* Слой с разбросанными буквами */
+.scatter{position:absolute; inset:0; z-index:3;}
 .letter{
-  width:78px; height:90px; border-radius:20px; cursor:grab;
+  position:absolute; width:78px; height:90px; border-radius:20px; cursor:grab;
   display:flex; align-items:center; justify-content:center;
   font-weight:900; font-size:50px; color:#fff;
   box-shadow:0 6px 0 rgba(0,0,0,.18), 0 10px 18px rgba(0,0,0,.12);
-  touch-action:none; transition:transform .12s;
+  touch-action:none; will-change:left,top,transform;
 }
-/* Буква-картинка: убираем цветную плитку, цвет несёт сама пластилиновая буква */
 .letter.img{background:transparent !important; box-shadow:none !important;}
 .letter.img img{width:100%; height:100%; object-fit:contain; pointer-events:none; -webkit-user-drag:none; user-select:none;}
-.letter.dragging{cursor:grabbing; z-index:50; transition:none;}
+.letter.dragging{cursor:grabbing;}
 .letter.placed{cursor:default;}
 .letter:not(.img).placed{box-shadow:0 4px 0 rgba(0,0,0,.14);}
-.letter.wiggle{animation:wiggle .4s ease;}
-@keyframes wiggle{0%,100%{transform:rotate(0);}25%{transform:rotate(-7deg) scale(1.05);}75%{transform:rotate(7deg) scale(1.05);}}
 
-.nextbar{display:flex; gap:12px; justify-content:center; padding-top:14px;}
+.nextbar{position:absolute; left:0; right:0; bottom:18px; display:flex; gap:12px; justify-content:center; z-index:10;}
 .btn{
   border:none; border-radius:18px; padding:14px 26px; font-family:'Nunito',sans-serif;
   font-weight:900; font-size:18px; cursor:pointer; color:#fff; background:var(--accent);
@@ -94,8 +85,7 @@ body{
 .btn.ghost{background:#fff; color:var(--accent); box-shadow:0 5px 0 rgba(0,0,0,.08);}
 .btn:active{transform:translateY(4px); box-shadow:0 1px 0 var(--accent-press);}
 
-/* Искорки */
-.spark{position:absolute; font-size:26px; pointer-events:none; animation:spark .9s ease-out forwards;}
+.spark{position:absolute; font-size:26px; pointer-events:none; z-index:20; animation:spark .9s ease-out forwards;}
 @keyframes spark{0%{transform:translate(0,0) scale(.4); opacity:1;}100%{transform:translate(var(--dx),var(--dy)) scale(1.1); opacity:0;}}
 
 @media (prefers-reduced-motion: reduce){ *{animation-duration:.001ms !important;} }

@@ -2,25 +2,61 @@
    БУКВОЕЖКИ — логика игры. Данные и ассеты — в words.js
    ============================================================ */
 
-/* ---------- Звук: файл (если есть) → иначе браузерный голос ---------- */
+/* ---------- Настройки блуждания (удобно крутить) ---------- */
+const IDLE_MIN=4000, IDLE_MAX=6000;     // через сколько мс бездействия буквы оживают
+const WAKE_MIN=150,  WAKE_MAX=520;      // пауза между пробуждением соседних букв
+const SPEED={vowel:55, sonor:45, voiced:60, voiceless:66, hiss:50, sign:24}; // px/сек по семьям
+
+/* фонетические семьи букв */
+const FAMILY={};
+'АЕЁИОУЫЭЮЯ'.split('').forEach(c=>FAMILY[c]='vowel');     // гласные — птицы
+'ЛМНРЙ'.split('').forEach(c=>FAMILY[c]='sonor');          // сонорные — зверьки
+'БВГДЗ'.split('').forEach(c=>FAMILY[c]='voiced');         // звонкие — жуки
+'КПСТФХЦ'.split('').forEach(c=>FAMILY[c]='voiceless');    // глухие — рыбки
+'ЖЧШЩ'.split('').forEach(c=>FAMILY[c]='hiss');            // шипящие — змеи
+'ЪЬ'.split('').forEach(c=>FAMILY[c]='sign');              // знаки — почти стоят
+function familyOf(ch){ return FAMILY[ch]||'voiceless'; }
+
+/* ---------- Аудио: предзагрузка + кэш ---------- */
+const audioCache={};
+function getAudio(url){ if(!audioCache[url]){ const a=new Audio(url); a.preload='auto'; audioCache[url]=a; } return audioCache[url]; }
+function preloadFor(item){
+  [...new Set(item.word)].forEach(ch=>{ const f=LETTER_SOUNDS[ch]; if(f) getAudio(assetURL(f)).load(); });
+  const w=item.audio&&item.audio.word; if(w) getAudio(assetURL(w)).load();
+  const o=item.object||{}; if(o.image){ const im=new Image(); im.src=assetURL(o.image); }
+}
+
+/* ---------- Браузерный голос (запасной вариант) ---------- */
 let ruVoice=null;
 function pickVoice(){ const vs=speechSynthesis.getVoices(); ruVoice=vs.find(v=>v.lang&&v.lang.toLowerCase().startsWith('ru'))||null; }
 if('speechSynthesis' in window){ pickVoice(); speechSynthesis.onvoiceschanged=pickVoice; }
-
-function playFile(url){ const a=new Audio(url); a.play().catch(()=>{}); return a; }
 function speak(text,rate=0.9){
   if(!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
   const u=new SpeechSynthesisUtterance(text);
   if(ruVoice) u.voice=ruVoice;
-  u.lang='ru-RU'; u.rate=rate; u.pitch=1.15;
-  speechSynthesis.speak(u);
+  u.lang='ru-RU'; u.rate=rate; u.pitch=1.15; speechSynthesis.speak(u);
 }
-function playLetter(ch){ const f=LETTER_SOUNDS[ch]; f?playFile(assetURL(f)):speak(ch,0.8); }
-function playWord(item){ const f=item.audio&&item.audio.word; f?playFile(assetURL(f)):speak(item.word,0.85); }
+
+/* ---------- Звук буквы ПО КРУГУ, пока держат палец ---------- */
+let heldAudio=null;
+function startLetterLoop(ch){
+  stopLetterLoop();
+  const f=LETTER_SOUNDS[ch];
+  if(f){ const a=getAudio(assetURL(f)); a.loop=true; a.currentTime=0; a.play().catch(()=>{}); heldAudio=a; }
+  else { speak(ch,0.8); }
+}
+function stopLetterLoop(){ if(heldAudio){ heldAudio.pause(); heldAudio.loop=false; heldAudio=null; } }
+
+function playWord(item){
+  const f=item.audio&&item.audio.word;
+  if(f){ const a=getAudio(assetURL(f)); a.loop=false; a.currentTime=0; a.play().catch(()=>{}); }
+  else speak(item.word,0.85);
+}
 
 /* ---------- Утилиты ---------- */
 const $=s=>document.querySelector(s);
+function rand(a,b){ return a+Math.random()*(b-a); }
 function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 
 /* ============================================================
@@ -31,10 +67,11 @@ function buildPicker(){
   WORDS.forEach(item=>{
     const t=document.createElement('button');
     t.className='word-tile';
-    t.innerHTML=`<span class="pic">${(item.object&&item.object.emoji)||'❓'}</span><span class="lbl">${item.word}</span>`;
+    t.innerHTML=`<span class="lbl">${item.word}</span>`;
     t.onclick=()=>startGame(item);
     box.appendChild(t);
   });
+  WORDS.forEach(preloadFor);
 }
 
 /* ============================================================
@@ -48,8 +85,9 @@ function startGame(item){
   $('#game').classList.remove('hidden');
   $('#reward').className='reward'; $('#reward').innerHTML='';
   $('#nextbar').classList.add('hidden');
+  stopLetterLoop(); kickIdle();
+  preloadFor(item);
 
-  // слоты с призрачными целевыми буквами
   const slots=$('#slots'); slots.innerHTML=''; slotEls=[];
   [...item.word].forEach(ch=>{
     const s=document.createElement('div');
@@ -57,58 +95,140 @@ function startGame(item){
     slots.appendChild(s); slotEls.push(s);
   });
 
-  // буквы в лотке (перемешаны)
-  const tray=$('#tray'); tray.innerHTML='';
+  const sc=$('#scatter'); sc.innerHTML='';
   let order=shuffle([...item.word]);
   if(order.join('')===item.word && item.word.length>1) order=shuffle(order);
+  const els=[];
   order.forEach((ch,i)=>{
     const l=document.createElement('div');
     l.className='letter'; l.dataset.letter=ch;
     const src=LETTER_IMAGES[ch];
     if(src){ l.classList.add('img'); l.innerHTML=`<img src="${assetURL(src)}" alt="${ch}" draggable="false">`; }
     else { l.textContent=ch; l.style.background=`var(--c${(i%6)+1})`; }
-    attachDrag(l);
-    tray.appendChild(l);
+    attachDrag(l); sc.appendChild(l); els.push(l);
   });
-
-  setTimeout(()=>playWord(item),300);
+  requestAnimationFrame(()=>{ scatterLetters(els); scheduleWander(); });
 }
 
-/* ---------- Перетаскивание (pointer events: тач + мышь) ---------- */
+function scatterLetters(els){
+  const sc=$('#scatter'), W=sc.clientWidth, H=sc.clientHeight, lw=84, lh=96;
+  els.forEach((el,i)=>{
+    const topRegion=(i%2===0);
+    const top=topRegion?rand(0.04,0.26):rand(0.60,0.84);
+    const left=rand(0.04,0.80), rot=rand(-16,16);
+    const x=left*(W-lw), y=top*(H-lh);
+    el.dataset.homeRot=rot;
+    el.style.left=x+'px'; el.style.top=y+'px'; el.style.transform=`rotate(${rot}deg)`;
+  });
+}
+
+/* ============================================================
+   БЛУЖДАНИЕ
+   ============================================================ */
+let wandering=false, wanderRAF=null, idleTimer=null, movers=[], zone=null, lastT=0, wanderStartTime=0;
+
+function kickIdle(){ stopWander(); if(idleTimer){ clearTimeout(idleTimer); idleTimer=null; } }
+function scheduleWander(){ if(idleTimer) clearTimeout(idleTimer); idleTimer=setTimeout(startWander, rand(IDLE_MIN,IDLE_MAX)); }
+
+function startWander(){
+  const els=[...document.querySelectorAll('#scatter .letter:not(.placed)')];
+  if(els.length===0) return;
+  const sc=$('#scatter'), W=sc.clientWidth, H=sc.clientHeight;
+  const scR=sc.getBoundingClientRect(), slR=$('#slots').getBoundingClientRect();
+  zone={ x:slR.left-scR.left-30, y:slR.top-scR.top-30, w:slR.width+60, h:slR.height+60, W, H };
+  let wake=0;
+  movers=shuffle(els).map((el,idx)=>{
+    const ch=el.dataset.letter, fam=familyOf(ch), sp=SPEED[fam], ang=rand(0,Math.PI*2);
+    if(idx>0) wake+=rand(WAKE_MIN,WAKE_MAX);
+    return { el, fam, sp, x:parseFloat(el.style.left)||0, y:parseFloat(el.style.top)||0,
+             vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp,
+             baseRot:parseFloat(el.dataset.homeRot)||0, phase:rand(0,Math.PI*2),
+             wakeAt:(idx===0?0:wake), awake:false };
+  });
+  wandering=true; wanderStartTime=performance.now(); lastT=wanderStartTime;
+  wanderRAF=requestAnimationFrame(wanderFrame);
+}
+
+function stopWander(){
+  wandering=false;
+  if(wanderRAF){ cancelAnimationFrame(wanderRAF); wanderRAF=null; }
+  movers.forEach(m=>{ m.el.style.transition=''; m.el.style.transform=`rotate(${m.baseRot}deg)`; });
+  movers=[];
+}
+
+function wanderFrame(now){
+  if(!wandering) return;
+  let dt=(now-lastT)/1000; lastT=now; if(dt>0.05) dt=0.05;
+  const t=now/1000, lw=78, lh=90, maxX=zone.W-lw, maxY=zone.H-lh;
+  movers.forEach(m=>{
+    if(!m.awake){ if(now-wanderStartTime>=m.wakeAt) m.awake=true; else return; }
+    if(m.fam==='voiceless'){ const a=Math.atan2(m.vy,m.vx)+rand(-0.7,0.7)*dt; m.vx=Math.cos(a)*m.sp; m.vy=Math.sin(a)*m.sp; } // рыбки рулят дугой
+    if(m.fam==='voiced'){ m.vx+=rand(-50,50)*dt; m.vy+=rand(-50,50)*dt; }  // жуки дёргаются
+    // отталкивание от центральной зоны слотов
+    const cx=m.x+lw/2, cy=m.y+lh/2;
+    if(cx>zone.x && cx<zone.x+zone.w && cy>zone.y && cy<zone.y+zone.h){
+      const zx=zone.x+zone.w/2, zy=zone.y+zone.h/2; let dx=cx-zx, dy=cy-zy; const d=Math.hypot(dx,dy)||1;
+      m.vx+=(dx/d)*140*dt; m.vy+=(dy/d)*140*dt;
+    }
+    const v=Math.hypot(m.vx,m.vy)||1; m.vx=m.vx/v*m.sp; m.vy=m.vy/v*m.sp; // держим темп
+    m.x+=m.vx*dt; m.y+=m.vy*dt;
+    if(m.x<0){m.x=0;m.vx=Math.abs(m.vx);} if(m.x>maxX){m.x=maxX;m.vx=-Math.abs(m.vx);}
+    if(m.y<0){m.y=0;m.vy=Math.abs(m.vy);} if(m.y>maxY){m.y=maxY;m.vy=-Math.abs(m.vy);}
+    // визуальный «характер» (transform — не влияет на координаты/столкновения)
+    let ox=0, oy=0, rot=m.baseRot;
+    switch(m.fam){
+      case 'vowel':     oy=Math.sin(t*1.6+m.phase)*5;  rot+=Math.sin(t*1.3+m.phase)*7; break;
+      case 'sonor':     oy=Math.sin(t*2.2+m.phase)*2;  rot+=Math.sin(t*2.2+m.phase)*7; break;
+      case 'voiced':    ox=Math.sin(t*26+m.phase)*2.5; rot+=Math.sin(t*30+m.phase)*5; break;
+      case 'voiceless': rot=m.baseRot+Math.atan2(m.vy,m.vx)*180/Math.PI*0.12; break;
+      case 'hiss': { const a=Math.atan2(m.vy,m.vx), px=-Math.sin(a), py=Math.cos(a), w=Math.sin(t*5+m.phase)*8; ox=px*w; oy=py*w; rot+=Math.sin(t*5+m.phase)*12; } break;
+      case 'sign':      ox=Math.sin(t*9+m.phase)*1.5; break;
+    }
+    m.el.style.left=m.x+'px'; m.el.style.top=m.y+'px';
+    m.el.style.transform=`translate(${ox}px,${oy}px) rotate(${rot}deg)`;
+  });
+  wanderRAF=requestAnimationFrame(wanderFrame);
+}
+
+/* ---------- Перетаскивание ---------- */
 function attachDrag(el){
-  let homeRect=null, offX=0, offY=0, dragging=false;
+  let dragging=false, offX=0, offY=0;
   el.addEventListener('pointerdown', e=>{
     if(el.classList.contains('placed')) return;
-    dragging=true;
-    playLetter(el.dataset.letter);
-    el.classList.add('wiggle'); setTimeout(()=>el.classList.remove('wiggle'),400);
-    homeRect=el.getBoundingClientRect();
-    offX=e.clientX-homeRect.left; offY=e.clientY-homeRect.top;
+    dragging=true; kickIdle();                 // касание замораживает блуждание
     el.setPointerCapture(e.pointerId);
+    startLetterLoop(el.dataset.letter);
+    const r=el.getBoundingClientRect();
+    offX=e.clientX-r.left; offY=e.clientY-r.top;
     el.classList.add('dragging');
-    el.style.position='fixed';
-    el.style.width=homeRect.width+'px'; el.style.height=homeRect.height+'px';
+    el.style.zIndex=60; el.style.transition='transform .12s';
+    el.style.transform='rotate(0deg) scale(1.08)';
     moveTo(e.clientX,e.clientY);
   });
   el.addEventListener('pointermove', e=>{ if(dragging) moveTo(e.clientX,e.clientY); });
   el.addEventListener('pointerup', e=>{
-    if(!dragging) return; dragging=false;
+    if(!dragging) return; dragging=false; stopLetterLoop();
     el.classList.remove('dragging');
     const slot=slotUnder(e.clientX,e.clientY);
     slotEls.forEach(s=>s.classList.remove('over'));
     if(slot && slot.dataset.filled==='0' && slot.dataset.letter===el.dataset.letter){ placeInSlot(el,slot); }
-    else { returnHome(); }
+    else { restAt(el); }                        // неверно — остаётся там, где отпустили
+    if(filledCount<current.word.length) scheduleWander();
   });
+  el.addEventListener('lostpointercapture', ()=>{ if(dragging){ dragging=false; stopLetterLoop(); restAt(el); scheduleWander(); } });
   function moveTo(x,y){
-    el.style.left=(x-offX)+'px'; el.style.top=(y-offY)+'px';
+    const sc=$('#scatter').getBoundingClientRect();
+    el.style.left=(x-sc.left-offX)+'px'; el.style.top=(y-sc.top-offY)+'px';
     const s=slotUnder(x,y);
     slotEls.forEach(o=>o.classList.toggle('over', o===s && s.dataset.filled==='0' && s.dataset.letter===el.dataset.letter));
   }
-  function returnHome(){
-    el.style.transition='left .22s ease, top .22s ease';
-    el.style.left=homeRect.left+'px'; el.style.top=homeRect.top+'px';
-    el.addEventListener('transitionend', function clr(){ el.style.cssText=''; el.removeEventListener('transitionend',clr); },{once:true});
-  }
+}
+
+/* буква замирает там, где её отпустили (без телепорта на старт) */
+function restAt(el){
+  el.style.transition='transform .2s ease';
+  el.style.transform=`rotate(${el.dataset.homeRot||0}deg) scale(1)`;
+  el.style.zIndex='';
 }
 
 function slotUnder(x,y){
@@ -117,10 +237,11 @@ function slotUnder(x,y){
 }
 
 function placeInSlot(el,slot){
-  const r=slot.getBoundingClientRect();
-  el.style.transition='left .15s ease, top .15s ease';
-  el.style.left=r.left+'px'; el.style.top=r.top+'px';
+  const sc=$('#scatter').getBoundingClientRect(), r=slot.getBoundingClientRect();
+  el.style.transition='left .15s ease, top .15s ease, transform .15s ease';
+  el.style.left=(r.left-sc.left)+'px'; el.style.top=(r.top-sc.top)+'px';
   el.style.width=r.width+'px'; el.style.height=r.height+'px';
+  el.style.transform='rotate(0deg) scale(1)'; el.style.zIndex='';
   slot.dataset.filled='1'; slot.classList.add('filled'); slot.textContent='';
   el.classList.add('placed');
   sparkle(r.left+r.width/2, r.top+r.height/2);
@@ -139,30 +260,27 @@ function sparkle(x,y){
   }
 }
 
-/* ---------- «Оживление» слова (уровень B: буквы оживают) ---------- */
+/* ---------- «Оживление» слова (уровень B) ---------- */
 function placedLetters(){ return [...document.querySelectorAll('.letter.placed')]; }
 
 function showRewardObject(){
   const r=$('#reward'); r.className='reward'; r.innerHTML='';
   const o=current.object||{};
-  if(o.video){ const v=document.createElement('video'); v.src=assetURL(o.video); v.autoplay=true; v.playsInline=true; r.appendChild(v); }
+  if(o.video){ const v=document.createElement('video'); v.src=assetURL(o.video); v.autoplay=true; v.loop=true; v.playsInline=true; r.appendChild(v); }
   else if(o.image){ const img=document.createElement('img'); img.src=assetURL(o.image); img.alt=current.word; r.appendChild(img); }
   else { const p=document.createElement('div'); p.className='word-pic'; p.textContent=o.emoji||'❓'; r.appendChild(p); }
   r.classList.add('show');
 }
 
 function playWordAnim(){
+  kickIdle();                                  // на время награды блуждание выключено
   const letters=placedLetters();
-
-  // 1) радостный подскок
   letters.forEach((el,i)=> setTimeout(()=>{
     el.style.transition='transform .3s cubic-bezier(.2,1.5,.4,1)';
     el.style.transform='translateY(-16px) scale(1.12)';
     setTimeout(()=> el.style.transform='translateY(0) scale(1)', 300);
   }, i*90));
   const jumpDone=letters.length*90+360;
-
-  // 2) буквы разъезжаются, освобождая центр
   setTimeout(()=>{
     const rects=letters.map(el=>el.getBoundingClientRect());
     const cx=rects.reduce((s,r)=>s+r.left+r.width/2,0)/rects.length;
@@ -175,13 +293,9 @@ function playWordAnim(){
       el.style.opacity='.85';
     });
   }, jumpDone);
-
-  // 3) в центре появляется предмет + звук слова
   const objAt=jumpDone+480;
   setTimeout(()=>{ showRewardObject(); playWord(current); }, objAt);
-
-  // 4) предмет уходит, буквы возвращаются и снова складываются в слово
-  const holdEnd=objAt+2200;
+  const o=current.object||{}; const hold=(o.image||o.video)?5000:2200; const holdEnd=objAt+hold;
   setTimeout(()=>{
     const r=$('#reward'); r.classList.remove('show'); r.classList.add('out');
     letters.forEach((el,i)=> setTimeout(()=>{
@@ -189,14 +303,12 @@ function playWordAnim(){
       el.style.transform='translate(0,0) rotate(0) scale(1)'; el.style.opacity='1';
     }, i*70));
   }, holdEnd);
-
-  // 5) убираем предмет, показываем кнопки
   setTimeout(()=>{ const r=$('#reward'); r.className='reward'; r.innerHTML=''; $('#nextbar').classList.remove('hidden'); }, holdEnd+750);
 }
 
 /* ---------- Кнопки ---------- */
 $('#btnReplay').onclick=()=>current&&playWord(current);
-$('#btnHome').onclick=()=>{ $('#game').classList.add('hidden'); $('#picker').classList.remove('hidden'); };
+$('#btnHome').onclick=()=>{ stopLetterLoop(); kickIdle(); $('#game').classList.add('hidden'); $('#picker').classList.remove('hidden'); };
 $('#btnAgain').onclick=()=>current&&startGame(current);
 $('#btnNext').onclick=()=>{ const i=WORDS.findIndex(w=>w.id===current.id); startGame(WORDS[(i+1)%WORDS.length]); };
 
