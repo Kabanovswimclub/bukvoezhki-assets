@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Буквоежки</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@700;800;900&display=swap&subset=cyrillic,cyrillic-ext,latin" rel="stylesheet">
+<style>
+:root{
+  --ink:#3a2e2a;
+  --paper-top:#fdf3e7;
+  --paper-bot:#fce3cf;
+  --ghost:#e9d6bd;
+  --slot-line:#d8c2a4;
+  --accent:#2bb3a3;
+  --accent-press:#1f9486;
+  --c1:#ff6b6b; --c2:#ffc93c; --c3:#6bcb77; --c4:#4d96ff; --c5:#b388eb; --c6:#ff924c;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0; height:100%; overflow:hidden;}
+body{
+  font-family:'Nunito',system-ui,sans-serif;
+  color:var(--ink);
+  background:linear-gradient(180deg,var(--paper-top),var(--paper-bot));
+  background-attachment:fixed;
+  touch-action:none; user-select:none; -webkit-user-select:none;
+}
+.screen{position:fixed; inset:0; display:flex; flex-direction:column;}
+.hidden{display:none !important;}
+
+/* ---------- Экран выбора ---------- */
+#picker{padding:24px 20px; gap:18px; align-items:center; justify-content:center;}
+#picker h1{font-family:'Fredoka','Nunito',sans-serif; font-weight:700; font-size:clamp(34px,9vw,52px); margin:0 0 6px; letter-spacing:.5px;}
+#picker p{margin:0 0 18px; font-size:17px; opacity:.7; font-weight:700;}
+.word-tiles{display:flex; flex-wrap:wrap; gap:16px; justify-content:center; max-width:520px;}
+.word-tile{
+  width:140px; height:150px; border:none; border-radius:26px; cursor:pointer;
+  background:#fff; box-shadow:0 8px 0 rgba(0,0,0,.07), 0 14px 24px rgba(0,0,0,.08);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+  font-family:'Nunito',sans-serif; transition:transform .12s ease, box-shadow .12s ease;
+}
+.word-tile:active{transform:translateY(4px); box-shadow:0 4px 0 rgba(0,0,0,.07), 0 8px 16px rgba(0,0,0,.08);}
+.word-tile .pic{font-size:60px; line-height:1;}
+.word-tile .lbl{font-weight:900; font-size:22px; letter-spacing:2px;}
+
+/* ---------- Игровой экран ---------- */
+#game{padding:14px 12px 20px;}
+.topbar{display:flex; align-items:center; justify-content:space-between; min-height:52px;}
+.iconbtn{
+  border:none; background:#fff; width:52px; height:52px; border-radius:50%;
+  font-size:24px; cursor:pointer; box-shadow:0 4px 0 rgba(0,0,0,.07), 0 8px 14px rgba(0,0,0,.07);
+  display:flex; align-items:center; justify-content:center; transition:transform .1s;
+}
+.iconbtn:active{transform:translateY(3px);}
+.stage{flex:1; display:flex; flex-direction:column; justify-content:space-between; position:relative;}
+
+/* Слоты */
+.slots{display:flex; gap:10px; justify-content:center; align-items:flex-end; margin-top:18px; flex-wrap:wrap;}
+.slot{
+  width:74px; height:90px; border-radius:18px; background:rgba(255,255,255,.35);
+  border:3px dashed var(--slot-line); display:flex; align-items:center; justify-content:center;
+  font-weight:900; font-size:50px; color:var(--ghost); transition:background .15s, border-color .15s;
+}
+.slot.target{color:var(--ghost);}
+.slot.over{border-color:var(--accent); background:rgba(43,179,163,.12);}
+.slot.filled{border-style:solid; border-color:transparent; background:transparent;}
+
+/* Зона «оживления» слова */
+.reward{flex:1; display:flex; align-items:center; justify-content:center; position:relative; min-height:120px;}
+.reward .word-pic{font-size:120px; line-height:1; will-change:transform;}
+.reward img,.reward video{max-width:70%; max-height:38vh; border-radius:24px;}
+.reward.show .word-pic,.reward.show img,.reward.show video{animation:popIn .5s cubic-bezier(.18,1.4,.4,1) both, breathe 2.2s ease-in-out .5s infinite;}
+@keyframes popIn{0%{transform:scale(.2) rotate(-12deg); opacity:0;} 100%{transform:scale(1) rotate(0); opacity:1;}}
+@keyframes breathe{0%,100%{transform:scale(1) rotate(-2deg);} 50%{transform:scale(1.06) rotate(2deg);}}
+.reward.out .word-pic,.reward.out img,.reward.out video{animation:popOut .5s cubic-bezier(.5,-0.3,.7,.5) forwards;}
+@keyframes popOut{0%{transform:scale(1) rotate(0); opacity:1;} 100%{transform:scale(.25) rotate(10deg); opacity:0;}}
+
+/* Лоток с буквами */
+.tray{display:flex; gap:12px; justify-content:center; align-items:center; flex-wrap:wrap; min-height:96px; padding-top:8px;}
+.letter{
+  width:78px; height:90px; border-radius:20px; cursor:grab;
+  display:flex; align-items:center; justify-content:center;
+  font-weight:900; font-size:50px; color:#fff;
+  box-shadow:0 6px 0 rgba(0,0,0,.18), 0 10px 18px rgba(0,0,0,.12);
+  touch-action:none; transition:transform .12s;
+}
+/* Буква-картинка: убираем цветную плитку, цвет несёт сама пластилиновая буква */
+.letter.img{background:transparent !important; box-shadow:none !important;}
+.letter.img img{width:100%; height:100%; object-fit:contain; pointer-events:none; -webkit-user-drag:none; user-select:none;}
+.letter.dragging{cursor:grabbing; z-index:50; transition:none;}
+.letter.placed{cursor:default;}
+.letter:not(.img).placed{box-shadow:0 4px 0 rgba(0,0,0,.14);}
+.letter.wiggle{animation:wiggle .4s ease;}
+@keyframes wiggle{0%,100%{transform:rotate(0);}25%{transform:rotate(-7deg) scale(1.05);}75%{transform:rotate(7deg) scale(1.05);}}
+
+.nextbar{display:flex; gap:12px; justify-content:center; padding-top:14px;}
+.btn{
+  border:none; border-radius:18px; padding:14px 26px; font-family:'Nunito',sans-serif;
+  font-weight:900; font-size:18px; cursor:pointer; color:#fff; background:var(--accent);
+  box-shadow:0 5px 0 var(--accent-press); transition:transform .1s;
+}
+.btn.ghost{background:#fff; color:var(--accent); box-shadow:0 5px 0 rgba(0,0,0,.08);}
+.btn:active{transform:translateY(4px); box-shadow:0 1px 0 var(--accent-press);}
+
+/* Искорки */
+.spark{position:absolute; font-size:26px; pointer-events:none; animation:spark .9s ease-out forwards;}
+@keyframes spark{0%{transform:translate(0,0) scale(.4); opacity:1;}100%{transform:translate(var(--dx),var(--dy)) scale(1.1); opacity:0;}}
+
+@media (prefers-reduced-motion: reduce){ *{animation-duration:.001ms !important;} }
+
+</style>
+</head>
+<body>
+
+<!-- ЭКРАН ВЫБОРА -->
+<section id="picker" class="screen">
+  <h1>Буквоежки</h1>
+  <p>Выбери слово и собери его из букв</p>
+  <div class="word-tiles" id="wordTiles"></div>
+</section>
+
+<!-- ИГРОВОЙ ЭКРАН -->
+<section id="game" class="screen hidden">
+  <div class="topbar">
+    <button class="iconbtn" id="btnReplay" title="Повторить слово">🔊</button>
+    <button class="iconbtn" id="btnHome" title="К выбору слова">✕</button>
+  </div>
+  <div class="stage">
+    <div class="slots" id="slots"></div>
+    <div class="reward" id="reward"></div>
+    <div class="tray" id="tray"></div>
+    <div class="nextbar hidden" id="nextbar">
+      <button class="btn ghost" id="btnAgain">Ещё раз</button>
+      <button class="btn" id="btnNext">Дальше →</button>
+    </div>
+  </div>
+</section>
+
+<script>
+/* ============================================================
+   БУКВОЕЖКИ — данные и конфигурация
+   Этот файл меняется чаще всего. Логика игры — в app.js.
+   ============================================================ */
+
+/* База, откуда берутся ассеты (буквы, звуки, видео).
+   jsDelivr раздаёт файлы из твоего GitHub-репозитория. */
+const ASSET_BASE = 'https://cdn.jsdelivr.net/gh/Kabanovswimclub/bukvoezhki-assets@main/';
+
+/* Собирает полный адрес ассета и кодирует кириллицу/пробелы автоматически. */
+function assetURL(p){ return p ? encodeURI(ASSET_BASE + p) : null; }
+
+/* Часто используемый ассет — гифка (пока одолжена для демо КОТ) */
+const CAT_WEBP = 'video/9bd83fbf16e59510f70ace195d09d634bbdbe1cfa91368147667a720baec1692_500.webp';
+
+/* ---------- Пластилиновые буквы (картинки), все 33 ---------- */
+const LETTER_IMAGES = {
+  'А':'letters/01_A.png','Б':'letters/02_B.png','В':'letters/03_V.png','Г':'letters/04_G.png',
+  'Д':'letters/05_D.png','Е':'letters/06_E.png','Ё':'letters/07_YO.png','Ж':'letters/08_ZH.png',
+  'З':'letters/09_Z.png','И':'letters/10_I.png','Й':'letters/11_IY.png','К':'letters/12_K.png',
+  'Л':'letters/13_L.png','М':'letters/14_M.png','Н':'letters/15_N.png','О':'letters/16_O.png',
+  'П':'letters/17_P.png','Р':'letters/18_R.png','С':'letters/19_S.png','Т':'letters/20_T.png',
+  'У':'letters/21_U.png','Ф':'letters/22_F.png','Х':'letters/23_KH.png','Ц':'letters/24_TS.png',
+  'Ч':'letters/25_CH.png','Ш':'letters/26_SH.png','Щ':'letters/27_SHCH.png','Ъ':'letters/28_HARD.png',
+  'Ы':'letters/29_YERU.png','Ь':'letters/30_SOFT.png','Э':'letters/31_EH.png','Ю':'letters/32_YU.png',
+  'Я':'letters/33_YA.png'
+};
+
+/* ---------- Звуки букв (пока записаны только нужные для 3 слов) ----------
+   Чего нет в карте — озвучивается браузерным голосом-заглушкой. */
+const LETTER_SOUNDS = {
+  'К':'letter_voice/К.mp3','О':'letter_voice/О.mp3','Т':'letter_voice/Т.mp3',
+  'Д':'letter_voice/Д.mp3','М':'letter_voice/М.mp3','Я':'letter_voice/Я.mp3',
+  'Ч':'letter_voice/Ч.mp3'
+};
+
+/* ---------- Слова ----------
+   object   — что слово означает (показывается ПОСЛЕ сборки): image / video / emoji
+   audio    — звук слова целиком (и предложения — для экрана 3)
+   sentence/sentenceVideo — данные для будущего экрана 3
+   syllables/level — на будущее (чтение по слогам, порядок/сложность) */
+const WORDS = [
+  {
+    id:'kot', word:'КОТ', syllables:['КОТ'], level:1,
+    object:{ emoji:'🐱', image:CAT_WEBP, video:null },   // demo: гифка из папки video
+    audio:{ word:'words_voice/Кот.mp3', sentence:null },
+    sentence:'Кот очень любит рыбу.',
+    sentenceVideo:CAT_WEBP
+    // sentenceWords: [...]  // заполним на экране 3
+  },
+  {
+    id:'dom', word:'ДОМ', syllables:['ДОМ'], level:1,
+    object:{ emoji:'🏠', image:null, video:null },
+    audio:{ word:'words_voice/Дом.mp3', sentence:null },
+    sentence:'Дом стоит на горе.',
+    sentenceVideo:null
+  },
+  {
+    id:'myach', word:'МЯЧ', syllables:['МЯЧ'], level:1,
+    object:{ emoji:'⚽', image:null, video:null },
+    audio:{ word:'words_voice/Мяч.mp3', sentence:null },
+    sentence:'Мяч прыгает высоко.',
+    sentenceVideo:null
+  }
+];
+
+/* ============================================================
+   БУКВОЕЖКИ — логика игры. Данные и ассеты — в words.js
+   ============================================================ */
+
+/* ---------- Звук: файл (если есть) → иначе браузерный голос ---------- */
+let ruVoice=null;
+function pickVoice(){ const vs=speechSynthesis.getVoices(); ruVoice=vs.find(v=>v.lang&&v.lang.toLowerCase().startsWith('ru'))||null; }
+if('speechSynthesis' in window){ pickVoice(); speechSynthesis.onvoiceschanged=pickVoice; }
+
+function playFile(url){ const a=new Audio(url); a.play().catch(()=>{}); return a; }
+function speak(text,rate=0.9){
+  if(!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  if(ruVoice) u.voice=ruVoice;
+  u.lang='ru-RU'; u.rate=rate; u.pitch=1.15;
+  speechSynthesis.speak(u);
+}
+function playLetter(ch){ const f=LETTER_SOUNDS[ch]; f?playFile(assetURL(f)):speak(ch,0.8); }
+function playWord(item){ const f=item.audio&&item.audio.word; f?playFile(assetURL(f)):speak(item.word,0.85); }
+
+/* ---------- Утилиты ---------- */
+const $=s=>document.querySelector(s);
+function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+/* ============================================================
+   ЭКРАН ВЫБОРА
+   ============================================================ */
+function buildPicker(){
+  const box=$('#wordTiles'); box.innerHTML='';
+  WORDS.forEach(item=>{
+    const t=document.createElement('button');
+    t.className='word-tile';
+    t.innerHTML=`<span class="pic">${(item.object&&item.object.emoji)||'❓'}</span><span class="lbl">${item.word}</span>`;
+    t.onclick=()=>startGame(item);
+    box.appendChild(t);
+  });
+}
+
+/* ============================================================
+   ИГРА
+   ============================================================ */
+let current=null, slotEls=[], filledCount=0;
+
+function startGame(item){
+  current=item; filledCount=0;
+  $('#picker').classList.add('hidden');
+  $('#game').classList.remove('hidden');
+  $('#reward').className='reward'; $('#reward').innerHTML='';
+  $('#nextbar').classList.add('hidden');
+
+  // слоты с призрачными целевыми буквами
+  const slots=$('#slots'); slots.innerHTML=''; slotEls=[];
+  [...item.word].forEach(ch=>{
+    const s=document.createElement('div');
+    s.className='slot target'; s.textContent=ch; s.dataset.letter=ch; s.dataset.filled='0';
+    slots.appendChild(s); slotEls.push(s);
+  });
+
+  // буквы в лотке (перемешаны)
+  const tray=$('#tray'); tray.innerHTML='';
+  let order=shuffle([...item.word]);
+  if(order.join('')===item.word && item.word.length>1) order=shuffle(order);
+  order.forEach((ch,i)=>{
+    const l=document.createElement('div');
+    l.className='letter'; l.dataset.letter=ch;
+    const src=LETTER_IMAGES[ch];
+    if(src){ l.classList.add('img'); l.innerHTML=`<img src="${assetURL(src)}" alt="${ch}" draggable="false">`; }
+    else { l.textContent=ch; l.style.background=`var(--c${(i%6)+1})`; }
+    attachDrag(l);
+    tray.appendChild(l);
+  });
+
+  setTimeout(()=>playWord(item),300);
+}
+
+/* ---------- Перетаскивание (pointer events: тач + мышь) ---------- */
+function attachDrag(el){
+  let homeRect=null, offX=0, offY=0, dragging=false;
+  el.addEventListener('pointerdown', e=>{
+    if(el.classList.contains('placed')) return;
+    dragging=true;
+    playLetter(el.dataset.letter);
+    el.classList.add('wiggle'); setTimeout(()=>el.classList.remove('wiggle'),400);
+    homeRect=el.getBoundingClientRect();
+    offX=e.clientX-homeRect.left; offY=e.clientY-homeRect.top;
+    el.setPointerCapture(e.pointerId);
+    el.classList.add('dragging');
+    el.style.position='fixed';
+    el.style.width=homeRect.width+'px'; el.style.height=homeRect.height+'px';
+    moveTo(e.clientX,e.clientY);
+  });
+  el.addEventListener('pointermove', e=>{ if(dragging) moveTo(e.clientX,e.clientY); });
+  el.addEventListener('pointerup', e=>{
+    if(!dragging) return; dragging=false;
+    el.classList.remove('dragging');
+    const slot=slotUnder(e.clientX,e.clientY);
+    slotEls.forEach(s=>s.classList.remove('over'));
+    if(slot && slot.dataset.filled==='0' && slot.dataset.letter===el.dataset.letter){ placeInSlot(el,slot); }
+    else { returnHome(); }
+  });
+  function moveTo(x,y){
+    el.style.left=(x-offX)+'px'; el.style.top=(y-offY)+'px';
+    const s=slotUnder(x,y);
+    slotEls.forEach(o=>o.classList.toggle('over', o===s && s.dataset.filled==='0' && s.dataset.letter===el.dataset.letter));
+  }
+  function returnHome(){
+    el.style.transition='left .22s ease, top .22s ease';
+    el.style.left=homeRect.left+'px'; el.style.top=homeRect.top+'px';
+    el.addEventListener('transitionend', function clr(){ el.style.cssText=''; el.removeEventListener('transitionend',clr); },{once:true});
+  }
+}
+
+function slotUnder(x,y){
+  for(const s of slotEls){ const r=s.getBoundingClientRect(); if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom) return s; }
+  return null;
+}
+
+function placeInSlot(el,slot){
+  const r=slot.getBoundingClientRect();
+  el.style.transition='left .15s ease, top .15s ease';
+  el.style.left=r.left+'px'; el.style.top=r.top+'px';
+  el.style.width=r.width+'px'; el.style.height=r.height+'px';
+  slot.dataset.filled='1'; slot.classList.add('filled'); slot.textContent='';
+  el.classList.add('placed');
+  sparkle(r.left+r.width/2, r.top+r.height/2);
+  filledCount++;
+  if(filledCount===current.word.length) setTimeout(playWordAnim,250);
+}
+
+function sparkle(x,y){
+  const marks=['✨','⭐','🌟'];
+  for(let i=0;i<5;i++){
+    const sp=document.createElement('div'); sp.className='spark'; sp.textContent=marks[i%marks.length];
+    sp.style.left=x+'px'; sp.style.top=y+'px';
+    sp.style.setProperty('--dx',(Math.random()*120-60)+'px');
+    sp.style.setProperty('--dy',(-40-Math.random()*70)+'px');
+    document.body.appendChild(sp); setTimeout(()=>sp.remove(),900);
+  }
+}
+
+/* ---------- «Оживление» слова (уровень B: буквы оживают) ---------- */
+function placedLetters(){ return [...document.querySelectorAll('.letter.placed')]; }
+
+function showRewardObject(){
+  const r=$('#reward'); r.className='reward'; r.innerHTML='';
+  const o=current.object||{};
+  if(o.video){ const v=document.createElement('video'); v.src=assetURL(o.video); v.autoplay=true; v.playsInline=true; r.appendChild(v); }
+  else if(o.image){ const img=document.createElement('img'); img.src=assetURL(o.image); img.alt=current.word; r.appendChild(img); }
+  else { const p=document.createElement('div'); p.className='word-pic'; p.textContent=o.emoji||'❓'; r.appendChild(p); }
+  r.classList.add('show');
+}
+
+function playWordAnim(){
+  const letters=placedLetters();
+
+  // 1) радостный подскок
+  letters.forEach((el,i)=> setTimeout(()=>{
+    el.style.transition='transform .3s cubic-bezier(.2,1.5,.4,1)';
+    el.style.transform='translateY(-16px) scale(1.12)';
+    setTimeout(()=> el.style.transform='translateY(0) scale(1)', 300);
+  }, i*90));
+  const jumpDone=letters.length*90+360;
+
+  // 2) буквы разъезжаются, освобождая центр
+  setTimeout(()=>{
+    const rects=letters.map(el=>el.getBoundingClientRect());
+    const cx=rects.reduce((s,r)=>s+r.left+r.width/2,0)/rects.length;
+    letters.forEach((el,i)=>{
+      const r=rects[i], lc=r.left+r.width/2;
+      const dir=lc<cx-2?-1:(lc>cx+2?1:(i%2?1:-1));
+      const dx=dir*(80+Math.abs(lc-cx)*0.7), dy=-34-Math.random()*28, rot=dir*(8+Math.random()*10);
+      el.style.transition='transform .45s cubic-bezier(.2,.9,.3,1), opacity .45s';
+      el.style.transform=`translate(${dx}px,${dy}px) rotate(${rot}deg) scale(.68)`;
+      el.style.opacity='.85';
+    });
+  }, jumpDone);
+
+  // 3) в центре появляется предмет + звук слова
+  const objAt=jumpDone+480;
+  setTimeout(()=>{ showRewardObject(); playWord(current); }, objAt);
+
+  // 4) предмет уходит, буквы возвращаются и снова складываются в слово
+  const holdEnd=objAt+2200;
+  setTimeout(()=>{
+    const r=$('#reward'); r.classList.remove('show'); r.classList.add('out');
+    letters.forEach((el,i)=> setTimeout(()=>{
+      el.style.transition='transform .5s cubic-bezier(.2,1.2,.3,1), opacity .4s';
+      el.style.transform='translate(0,0) rotate(0) scale(1)'; el.style.opacity='1';
+    }, i*70));
+  }, holdEnd);
+
+  // 5) убираем предмет, показываем кнопки
+  setTimeout(()=>{ const r=$('#reward'); r.className='reward'; r.innerHTML=''; $('#nextbar').classList.remove('hidden'); }, holdEnd+750);
+}
+
+/* ---------- Кнопки ---------- */
+$('#btnReplay').onclick=()=>current&&playWord(current);
+$('#btnHome').onclick=()=>{ $('#game').classList.add('hidden'); $('#picker').classList.remove('hidden'); };
+$('#btnAgain').onclick=()=>current&&startGame(current);
+$('#btnNext').onclick=()=>{ const i=WORDS.findIndex(w=>w.id===current.id); startGame(WORDS[(i+1)%WORDS.length]); };
+
+buildPicker();
+
+</script>
+</body>
+</html>
