@@ -2,12 +2,11 @@
    БУКВОЕЖКИ — логика игры. Данные и ассеты — в words.js
    ============================================================ */
 
-/* ---------- Настройки (удобно крутить) ---------- */
-const IDLE_MIN=4000, IDLE_MAX=6000;     // мс бездействия до оживления
-const WAKE_MIN=150,  WAKE_MAX=520;      // паузы между пробуждением соседей
+/* ---------- Настройки ---------- */
+const IDLE_MIN=4000, IDLE_MAX=6000;
+const WAKE_MIN=150,  WAKE_MAX=520;
 const SPEED={vowel:55, sonor:45, voiced:60, voiceless:66, hiss:50, sign:24};
 
-/* фонетические семьи */
 const FAMILY={};
 'АЕЁИОУЫЭЮЯ'.split('').forEach(c=>FAMILY[c]='vowel');
 'ЛМНРЙ'.split('').forEach(c=>FAMILY[c]='sonor');
@@ -17,7 +16,6 @@ const FAMILY={};
 'ЪЬ'.split('').forEach(c=>FAMILY[c]='sign');
 function familyOf(ch){ return FAMILY[ch]||'voiceless'; }
 
-/* костюмы по семьям (sign — без костюма) */
 const COSTUMES={
   vowel:'costumes/wings.png', voiceless:'costumes/fins.png',
   sonor:'costumes/critter.png', voiced:'costumes/beetle.png', hiss:'costumes/snake.png'
@@ -68,6 +66,8 @@ function rand(a,b){ return a+Math.random()*(b-a); }
 function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 function rotEl(el){ return el.querySelector('.l-rot'); }
 function costumeEl(el){ return el.querySelector('.l-costume'); }
+function showArrows(){ $('#btnPrev').classList.remove('hidden'); $('#btnNext').classList.remove('hidden'); }
+function hideArrows(){ $('#btnPrev').classList.add('hidden'); $('#btnNext').classList.add('hidden'); }
 
 /* ============================================================
    ЭКРАН ВЫБОРА
@@ -79,7 +79,7 @@ function buildPicker(){
     t.className='word-tile'; t.innerHTML=`<span class="lbl">${item.word}</span>`;
     t.onclick=()=>startGame(item); box.appendChild(t);
   });
-  WORDS.forEach(preloadFor);
+  WORDS.slice(0,4).forEach(preloadFor);
 }
 
 /* ============================================================
@@ -92,7 +92,7 @@ function startGame(item){
   $('#picker').classList.add('hidden');
   $('#game').classList.remove('hidden');
   $('#reward').className='reward'; $('#reward').innerHTML='';
-  $('#nextbar').classList.add('hidden');
+  hideArrows();
   stopLetterLoop(); kickIdle();
   preloadFor(item);
 
@@ -208,9 +208,9 @@ function attachDrag(el){
     dragging=true; kickIdle();
     el.setPointerCapture(e.pointerId);
     startLetterLoop(el.dataset.letter);
-    const c=costumeEl(el); if(c) c.classList.remove('show');   // костюм прячется
+    const c=costumeEl(el); if(c) c.classList.remove('show');
     const r0=rotEl(el); r0.style.transition='transform .15s'; r0.style.transform='rotate(0deg)';
-    el.classList.add('squashing','dragging');                  // буква пружинит
+    el.classList.add('squashing','dragging');
     el.style.zIndex=60;
     const r=el.getBoundingClientRect(); offX=e.clientX-r.left; offY=e.clientY-r.top;
     moveTo(e.clientX,e.clientY);
@@ -234,7 +234,6 @@ function attachDrag(el){
   }
 }
 
-/* буква замирает там, где отпустили */
 function restAt(el){
   const r=rotEl(el); r.style.transition='transform .2s ease'; r.style.transform=`rotate(${el.dataset.homeRot||0}deg)`;
 }
@@ -276,7 +275,7 @@ function showRewardObject(){
   const r=$('#reward'); r.className='reward'; r.innerHTML='';
   const o=current.object||{};
   if(o.video){ const v=document.createElement('video'); v.src=assetURL(o.video); v.autoplay=true; v.loop=true; v.playsInline=true; r.appendChild(v); }
-  else if(o.image){ const img=document.createElement('img'); img.src=assetURL(o.image); img.alt=current.word; r.appendChild(img); }
+  else if(o.image){ const img=document.createElement('img'); img.src=assetURL(o.image); img.alt=current.word; img.onerror=()=>{ r.innerHTML=`<div class="word-pic">${o.emoji||'❓'}</div>`; }; r.appendChild(img); }
   else { const p=document.createElement('div'); p.className='word-pic'; p.textContent=o.emoji||'❓'; r.appendChild(p); }
   r.classList.add('show');
 }
@@ -312,13 +311,14 @@ function playWordAnim(){
       rr.style.transform='translate(0,0) rotate(0) scale(1)'; el.style.opacity='1';
     }, i*70));
   }, holdEnd);
-  setTimeout(()=>{ const r=$('#reward'); r.className='reward'; r.innerHTML=''; $('#nextbar').classList.remove('hidden'); }, holdEnd+750);
+  setTimeout(()=>{ const r=$('#reward'); r.className='reward'; r.innerHTML=''; showArrows(); }, holdEnd+750);
 }
 
 /* ---------- Кнопки ---------- */
+function gotoWord(delta){ const i=WORDS.findIndex(w=>w.id===current.id); const n=(i+delta+WORDS.length)%WORDS.length; startGame(WORDS[n]); }
 $('#btnReplay').onclick=()=>current&&playWord(current);
 $('#btnHome').onclick=()=>{ stopLetterLoop(); kickIdle(); $('#game').classList.add('hidden'); $('#picker').classList.remove('hidden'); };
-$('#btnAgain').onclick=()=>current&&startGame(current);
-$('#btnNext').onclick=()=>{ const i=WORDS.findIndex(w=>w.id===current.id); startGame(WORDS[(i+1)%WORDS.length]); };
+$('#btnPrev').onclick=()=>gotoWord(-1);
+$('#btnNext').onclick=()=>gotoWord(1);
 
 buildPicker();

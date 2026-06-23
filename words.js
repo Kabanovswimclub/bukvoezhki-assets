@@ -1,20 +1,12 @@
 /* ============================================================
-   БУКВОЕЖКИ — данные и конфигурация
-   Этот файл меняется чаще всего. Логика игры — в app.js.
+   БУКВОЕЖКИ — данные и конфигурация. Логика — в app.js
    ============================================================ */
 
-/* База, откуда берутся ассеты (буквы, звуки, видео).
-   jsDelivr раздаёт файлы из твоего GitHub-репозитория. */
-const ASSET_BASE = 'https://cdn.jsdelivr.net/gh/Kabanovswimclub/bukvoezhki-assets@main/';
-
-/* Собирает полный адрес ассета и кодирует кириллицу/пробелы автоматически. */
-function assetURL(p){ return p ? encodeURI(ASSET_BASE + p) : null; }
-
-/* Часто используемый ассет — гифка (пока одолжена для демо КОТ) */
-const CAT_WEBP = 'video/9bd83fbf16e59510f70ace195d09d634bbdbe1cfa91368147667a720baec1692_500.webp';
+const ASSET_BASE='https://cdn.jsdelivr.net/gh/Kabanovswimclub/bukvoezhki-assets@main/';
+function assetURL(p){ return p ? encodeURI(ASSET_BASE+p) : null; }
 
 /* ---------- Пластилиновые буквы (картинки), все 33 ---------- */
-const LETTER_IMAGES = {
+const LETTER_IMAGES={
   'А':'letters/01_A.png','Б':'letters/02_B.png','В':'letters/03_V.png','Г':'letters/04_G.png',
   'Д':'letters/05_D.png','Е':'letters/06_E.png','Ё':'letters/07_YO.png','Ж':'letters/08_ZH.png',
   'З':'letters/09_Z.png','И':'letters/10_I.png','Й':'letters/11_IY.png','К':'letters/12_K.png',
@@ -26,40 +18,25 @@ const LETTER_IMAGES = {
   'Я':'letters/33_YA.png'
 };
 
-/* ---------- Звуки букв (пока записаны только нужные для 3 слов) ----------
-   Чего нет в карте — озвучивается браузерным голосом-заглушкой. */
-const LETTER_SOUNDS = {
-  'К':'letter_voice/К.mp3','О':'letter_voice/О.mp3','Т':'letter_voice/Т.mp3',
-  'Д':'letter_voice/Д.mp3','М':'letter_voice/М.mp3','Я':'letter_voice/Я.mp3',
-  'Ч':'letter_voice/Ч.mp3'
-};
+/* ---------- Звуки букв — весь алфавит (letter_voice/<Буква>.mp3) ---------- */
+const LETTER_SOUNDS={};
+'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'.split('').forEach(ch=>{ LETTER_SOUNDS[ch]='letter_voice/'+ch+'.mp3'; });
 
 /* ---------- Слова ----------
-   object   — что слово означает (показывается ПОСЛЕ сборки): image / video / emoji
-   audio    — звук слова целиком (и предложения — для экрана 3)
-   sentence/sentenceVideo — данные для будущего экрана 3
-   syllables/level — на будущее (чтение по слогам, порядок/сложность) */
-const WORDS = [
-  {
-    id:'kot', word:'КОТ', syllables:['КОТ'], level:1,
-    object:{ emoji:'🐱', image:CAT_WEBP, video:null },   // demo: гифка из папки video
-    audio:{ word:'words_voice/Кот.mp3', sentence:null },
-    sentence:'Кот очень любит рыбу.',
-    sentenceVideo:CAT_WEBP
-    // sentenceWords: [...]  // заполним на экране 3
-  },
-  {
-    id:'dom', word:'ДОМ', syllables:['ДОМ'], level:1,
-    object:{ emoji:'🏠', image:null, video:null },
-    audio:{ word:'words_voice/Дом.mp3', sentence:null },
-    sentence:'Дом стоит на горе.',
-    sentenceVideo:null
-  },
-  {
-    id:'myach', word:'МЯЧ', syllables:['МЯЧ'], level:1,
-    object:{ emoji:'⚽', image:null, video:null },
-    audio:{ word:'words_voice/Мяч.mp3', sentence:null },
-    sentence:'Мяч прыгает высоко.',
-    sentenceVideo:null
-  }
+   image  — гифка предмета: video/<слово>.gif (кириллица, строчные)
+   audio  — звук слова: words_voice/<Слово>.mp3 (кириллица, с заглавной)
+   emoji  — запасной вариант, если гифка не загрузится */
+const WORD_LIST=[
+  {w:'дом', emoji:'🏠'}, {w:'мяч', emoji:'⚽'}, {w:'сом', emoji:'🐟'}, {w:'ком', emoji:'⚪'},
+  {w:'кот', emoji:'🐱'}, {w:'кит', emoji:'🐳'}, {w:'рот', emoji:'👄'}, {w:'нос', emoji:'👃'},
+  {w:'лес', emoji:'🌲'}, {w:'сок', emoji:'🧃'}, {w:'сыр', emoji:'🧀'}, {w:'мак', emoji:'🌺'}
 ];
+const WORDS=WORD_LIST.map(({w,emoji})=>{
+  const up=w.toUpperCase(), cap=w[0].toUpperCase()+w.slice(1);
+  return {
+    id:w, word:up, syllables:[up], level:1,
+    object:{ emoji, image:'video/'+w+'.gif', video:null },
+    audio:{ word:'words_voice/'+cap+'.mp3', sentence:null },
+    sentence:null
+  };
+});
