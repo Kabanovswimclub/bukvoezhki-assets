@@ -21,7 +21,7 @@ const COSTUMES={
   sonor:'costumes/critter.png', voiced:'costumes/beetle.png', hiss:'costumes/snake.png'
 };
 
-/* ---------- Аудио: предзагрузка + кэш ---------- */
+/* ---------- Аудио ---------- */
 const audioCache={};
 function getAudio(url){ if(!audioCache[url]){ const a=new Audio(url); a.preload='auto'; audioCache[url]=a; } return audioCache[url]; }
 function preloadFor(item){
@@ -33,7 +33,6 @@ function preloadFor(item){
   const o=item.object||{}; if(o.image){ const im=new Image(); im.src=assetURL(o.image); }
 }
 
-/* ---------- Браузерный голос (запасной) ---------- */
 let ruVoice=null;
 function pickVoice(){ const vs=speechSynthesis.getVoices(); ruVoice=vs.find(v=>v.lang&&v.lang.toLowerCase().startsWith('ru'))||null; }
 if('speechSynthesis' in window){ pickVoice(); speechSynthesis.onvoiceschanged=pickVoice; }
@@ -45,7 +44,7 @@ function speak(text,rate=0.9){
   u.lang='ru-RU'; u.rate=rate; u.pitch=1.15; speechSynthesis.speak(u);
 }
 
-/* ---------- Звук буквы по кругу, пока держат ---------- */
+/* звук буквы по кругу, пока держат */
 let heldAudio=null;
 function startLetterLoop(ch){
   stopLetterLoop();
@@ -54,11 +53,21 @@ function startLetterLoop(ch){
   else { speak(ch,0.8); }
 }
 function stopLetterLoop(){ if(heldAudio){ heldAudio.pause(); heldAudio.loop=false; heldAudio=null; } }
+
+/* слово: один раз, и отдельно — по кругу на удержании */
 function playWord(item){
   const f=item.audio&&item.audio.word;
   if(f){ const a=getAudio(assetURL(f)); a.loop=false; a.currentTime=0; a.play().catch(()=>{}); }
   else speak(item.word,0.85);
 }
+let heldWordAudio=null;
+function startWordLoop(item){
+  stopWordLoop();
+  const f=item.audio&&item.audio.word;
+  if(f){ const a=getAudio(assetURL(f)); a.loop=true; a.currentTime=0; a.play().catch(()=>{}); heldWordAudio=a; }
+  else speak(item.word,0.85);
+}
+function stopWordLoop(){ if(heldWordAudio){ heldWordAudio.pause(); heldWordAudio.loop=false; heldWordAudio=null; } }
 
 /* ---------- Утилиты ---------- */
 const $=s=>document.querySelector(s);
@@ -68,6 +77,14 @@ function rotEl(el){ return el.querySelector('.l-rot'); }
 function costumeEl(el){ return el.querySelector('.l-costume'); }
 function showArrows(){ $('#btnPrev').classList.remove('hidden'); $('#btnNext').classList.remove('hidden'); }
 function hideArrows(){ $('#btnPrev').classList.add('hidden'); $('#btnNext').classList.add('hidden'); }
+function hideWordHold(){ $('#wordHold').classList.add('hidden'); }
+function showWordHold(){
+  const stg=document.querySelector('#game .stage').getBoundingClientRect();
+  const sl=$('#slots').getBoundingClientRect(), pad=34, wh=$('#wordHold');
+  wh.style.left=(sl.left-stg.left-pad)+'px'; wh.style.top=(sl.top-stg.top-pad)+'px';
+  wh.style.width=(sl.width+pad*2)+'px'; wh.style.height=(sl.height+pad*2)+'px';
+  wh.classList.remove('hidden');
+}
 
 /* ============================================================
    ЭКРАН ВЫБОРА
@@ -76,8 +93,10 @@ function buildPicker(){
   const box=$('#wordTiles'); box.innerHTML='';
   WORDS.forEach(item=>{
     const t=document.createElement('button');
-    t.className='word-tile'; t.innerHTML=`<span class="lbl">${item.word}</span>`;
-    t.onclick=()=>startGame(item); box.appendChild(t);
+    t.className='word-tile'; t.style.touchAction='manipulation';
+    t.innerHTML=`<span class="lbl">${item.word}</span>`;
+    t.addEventListener('pointerup', e=>{ e.preventDefault(); startGame(item); });
+    box.appendChild(t);
   });
   WORDS.slice(0,4).forEach(preloadFor);
 }
@@ -92,8 +111,8 @@ function startGame(item){
   $('#picker').classList.add('hidden');
   $('#game').classList.remove('hidden');
   $('#reward').className='reward'; $('#reward').innerHTML='';
-  hideArrows();
-  stopLetterLoop(); kickIdle();
+  hideArrows(); hideWordHold();
+  stopLetterLoop(); stopWordLoop(); kickIdle();
   preloadFor(item);
 
   const slots=$('#slots'); slots.innerHTML=''; slotEls=[];
@@ -132,7 +151,7 @@ function scatterLetters(els){
 }
 
 /* ============================================================
-   БЛУЖДАНИЕ + появление костюмов
+   БЛУЖДАНИЕ + костюмы
    ============================================================ */
 let wandering=false, wanderRAF=null, idleTimer=null, movers=[], zone=null, lastT=0, wanderStartTime=0;
 
@@ -268,7 +287,7 @@ function sparkle(x,y){
   }
 }
 
-/* ---------- «Оживление» слова (уровень B) ---------- */
+/* ---------- «Оживление» слова ---------- */
 function placedLetters(){ return [...document.querySelectorAll('.letter.placed')]; }
 
 function showRewardObject(){
@@ -279,7 +298,32 @@ function showRewardObject(){
   else { const p=document.createElement('div'); p.className='word-pic'; p.textContent=o.emoji||'❓'; r.appendChild(p); }
   r.classList.add('show');
 }
+function hideRewardObject(){
+  const r=$('#reward'); r.classList.remove('show'); r.classList.add('out');
+  setTimeout(()=>{ if(!$('#reward').classList.contains('show')){ $('#reward').className='reward'; $('#reward').innerHTML=''; } }, 360);
+}
 
+function spreadLetters(){
+  const letters=placedLetters();
+  const rects=letters.map(el=>el.getBoundingClientRect());
+  const cx=rects.reduce((s,r)=>s+r.left+r.width/2,0)/Math.max(rects.length,1);
+  letters.forEach((el,i)=>{
+    const rc=rects[i], lc=rc.left+rc.width/2;
+    const dir=lc<cx-2?-1:(lc>cx+2?1:(i%2?1:-1));
+    const dx=dir*(80+Math.abs(lc-cx)*0.7), dy=-34-Math.random()*28, rot=dir*(8+Math.random()*10);
+    const r=rotEl(el); r.style.transition='transform .4s cubic-bezier(.2,.9,.3,1), opacity .4s';
+    r.style.transform=`translate(${dx}px,${dy}px) rotate(${rot}deg) scale(.68)`;
+    el.style.opacity='.85';
+  });
+}
+function reformLetters(){
+  placedLetters().forEach((el,i)=> setTimeout(()=>{
+    const rr=rotEl(el); rr.style.transition='transform .5s cubic-bezier(.2,1.2,.3,1)'; el.style.transition='opacity .4s';
+    rr.style.transform='translate(0,0) rotate(0) scale(1)'; el.style.opacity='1';
+  }, i*60));
+}
+
+/* автопоказ один раз после сборки */
 function playWordAnim(){
   kickIdle();
   const letters=placedLetters();
@@ -289,36 +333,35 @@ function playWordAnim(){
     setTimeout(()=> r.style.transform='translateY(0) scale(1)', 300);
   }, i*90));
   const jumpDone=letters.length*90+360;
-  setTimeout(()=>{
-    const rects=letters.map(el=>el.getBoundingClientRect());
-    const cx=rects.reduce((s,r)=>s+r.left+r.width/2,0)/rects.length;
-    letters.forEach((el,i)=>{
-      const rc=rects[i], lc=rc.left+rc.width/2;
-      const dir=lc<cx-2?-1:(lc>cx+2?1:(i%2?1:-1));
-      const dx=dir*(80+Math.abs(lc-cx)*0.7), dy=-34-Math.random()*28, rot=dir*(8+Math.random()*10);
-      const r=rotEl(el); r.style.transition='transform .45s cubic-bezier(.2,.9,.3,1), opacity .45s';
-      r.style.transform=`translate(${dx}px,${dy}px) rotate(${rot}deg) scale(.68)`;
-      el.style.opacity='.85';
-    });
-  }, jumpDone);
-  const objAt=jumpDone+480;
+  setTimeout(spreadLetters, jumpDone);
+  const objAt=jumpDone+460;
   setTimeout(()=>{ showRewardObject(); playWord(current); }, objAt);
   const o=current.object||{}; const hold=(o.image||o.video)?5000:2200; const holdEnd=objAt+hold;
-  setTimeout(()=>{
-    const r=$('#reward'); r.classList.remove('show'); r.classList.add('out');
-    letters.forEach((el,i)=> setTimeout(()=>{
-      const rr=rotEl(el); rr.style.transition='transform .5s cubic-bezier(.2,1.2,.3,1)'; el.style.transition='opacity .4s';
-      rr.style.transform='translate(0,0) rotate(0) scale(1)'; el.style.opacity='1';
-    }, i*70));
-  }, holdEnd);
-  setTimeout(()=>{ const r=$('#reward'); r.className='reward'; r.innerHTML=''; showArrows(); }, holdEnd+750);
+  setTimeout(()=>{ hideRewardObject(); reformLetters(); }, holdEnd);
+  setTimeout(()=>{ showArrows(); showWordHold(); }, holdEnd+650);
 }
 
-/* ---------- Кнопки ---------- */
-function gotoWord(delta){ const i=WORDS.findIndex(w=>w.id===current.id); const n=(i+delta+WORDS.length)%WORDS.length; startGame(WORDS[n]); }
-$('#btnReplay').onclick=()=>current&&playWord(current);
-$('#btnHome').onclick=()=>{ stopLetterLoop(); kickIdle(); $('#game').classList.add('hidden'); $('#picker').classList.remove('hidden'); };
-$('#btnPrev').onclick=()=>gotoWord(-1);
-$('#btnNext').onclick=()=>gotoWord(1);
+/* удержание собранного слова: гифка + звук по кругу, пока держишь */
+let wordHeld=false;
+function bindWordHold(){
+  const wh=$('#wordHold');
+  wh.addEventListener('pointerdown', e=>{
+    e.preventDefault(); wordHeld=true; wh.setPointerCapture(e.pointerId);
+    kickIdle(); spreadLetters(); showRewardObject(); startWordLoop(current);
+  });
+  const end=()=>{ if(!wordHeld) return; wordHeld=false; stopWordLoop(); hideRewardObject(); reformLetters(); };
+  wh.addEventListener('pointerup', e=>{ e.preventDefault(); end(); });
+  wh.addEventListener('pointercancel', end);
+  wh.addEventListener('lostpointercapture', end);
+}
 
+/* ---------- Кнопки (pointerup — срабатывают с первого раза) ---------- */
+function onTap(sel, fn){ $(sel).addEventListener('pointerup', e=>{ e.preventDefault(); fn(e); }); }
+function gotoWord(delta){ const i=WORDS.findIndex(w=>w.id===current.id); const n=(i+delta+WORDS.length)%WORDS.length; startGame(WORDS[n]); }
+onTap('#btnReplay', ()=>current&&playWord(current));
+onTap('#btnHome', ()=>{ stopLetterLoop(); stopWordLoop(); kickIdle(); hideWordHold(); $('#game').classList.add('hidden'); $('#picker').classList.remove('hidden'); });
+onTap('#btnPrev', ()=>gotoWord(-1));
+onTap('#btnNext', ()=>gotoWord(1));
+
+bindWordHold();
 buildPicker();

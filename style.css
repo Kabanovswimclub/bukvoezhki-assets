@@ -95,14 +95,18 @@ body{
 
 /* Стрелки листания слов — в нижних углах, видны только после сборки */
 .arrow{
-  position:absolute; bottom:22px; width:62px; height:62px; border:none; border-radius:50%;
-  background:var(--accent); color:#fff; font-size:26px; cursor:pointer; z-index:10;
-  box-shadow:0 5px 0 var(--accent-press); display:flex; align-items:center; justify-content:center;
-  transition:transform .1s;
+  position:absolute; bottom:24px; width:82px; height:82px; border:none; border-radius:50%;
+  background:var(--accent); color:#fff; font-size:38px; cursor:pointer; z-index:10;
+  box-shadow:0 6px 0 var(--accent-press); display:flex; align-items:center; justify-content:center;
+  transition:transform .1s; touch-action:manipulation;
 }
-.arrow:active{transform:translateY(4px); box-shadow:0 1px 0 var(--accent-press);}
+.arrow:active{transform:translateY(5px); box-shadow:0 1px 0 var(--accent-press);}
 .arrow-left{left:22px;}
 .arrow-right{right:22px;}
+.iconbtn{touch-action:manipulation;}
+
+/* невидимая зона удержания над собранным словом (центр + края) */
+.wordhold{position:absolute; z-index:8; background:transparent; cursor:pointer; touch-action:none;}
 
 .spark{position:absolute; font-size:26px; pointer-events:none; z-index:20; animation:spark .9s ease-out forwards;}
 @keyframes spark{0%{transform:translate(0,0) scale(.4); opacity:1;}100%{transform:translate(var(--dx),var(--dy)) scale(1.1); opacity:0;}}
