@@ -26,17 +26,12 @@ function cap(s){ return s[0].toUpperCase()+s.slice(1).toLowerCase(); }
 
 /* ---------- Простые слова (буквы → слово) ---------- */
 const SIMPLE=[
-  {w:'дом',emoji:'🏠'},{w:'мяч',emoji:'⚽'},{w:'сом',emoji:'🐟'},{w:'ком',emoji:'⚪'},
-  {w:'кот',emoji:'🐱'},{w:'кит',emoji:'🐳'},{w:'рот',emoji:'👄'},{w:'нос',emoji:'👃'},
-  {w:'лес',emoji:'🌲'},{w:'сок',emoji:'🧃'},{w:'сыр',emoji:'🧀'},{w:'мак',emoji:'🌺'}
+  {w:'кот',emoji:'🐱'},{w:'мяч',emoji:'⚽'}
 ];
 /* ---------- Слоговые слова (буквы → слоги → слово) ---------- */
 const SYLL=[
   {w:'мама',emoji:'👩',syl:['МА','МА']},
-  {w:'папа',emoji:'👨',syl:['ПА','ПА']},
-  {w:'рыба',emoji:'🐟',syl:['РЫ','БА']},
-  {w:'коза',emoji:'🐐',syl:['КО','ЗА']},
-  {w:'молоко',emoji:'🥛',syl:['МО','ЛО','КО']}
+  {w:'рыба',emoji:'🐟',syl:['РЫ','БА']}
 ];
 
 function makeLetterWord({w,emoji}){

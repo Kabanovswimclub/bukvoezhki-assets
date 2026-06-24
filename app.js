@@ -113,7 +113,7 @@ function startGame(item){
   $('#slots').innerHTML=''; slotEls=[];
   $('#sylLayer').innerHTML=''; sylBlocks=[];
   $('#receiver').innerHTML=''; $('#receiver').classList.add('hidden'); recvSlots=[];
-  $('#scatter').innerHTML='';
+  $('#scatter').innerHTML=''; $('#scatter').style.pointerEvents=''; $('#sylLayer').style.zIndex='';
   preloadFor(item);
   if(item.mode==='syllables') buildSyllableStage(item);
   else buildLetterStage(item);
@@ -336,6 +336,8 @@ function syllableReady(block){
 }
 function startPhase2(){
   phase=2; kickIdle();
+  $('#scatter').style.pointerEvents='none';   // буквы все расставлены — не мешают
+  $('#sylLayer').style.zIndex='6';            // готовые слоги выше букв, их можно таскать
   const recv=$('#receiver'); recv.innerHTML=''; recvSlots=[];
   current.syllables.forEach(syl=>{
     const s=document.createElement('div'); s.className='recv-slot'; s.dataset.syl=syl; s.dataset.filled='0'; s.textContent=syl;
