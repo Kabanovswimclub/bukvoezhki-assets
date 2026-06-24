@@ -316,15 +316,13 @@ function placeLetterInBlock(el,block){
   const ch=el.dataset.letter;
   const cell=[...block.querySelectorAll('.syl-cell')].find(c=>c.dataset.filled==='0'&&c.dataset.letter===ch);
   if(!cell){ restAt(el); return; }
-  const sc=$('#scatter').getBoundingClientRect(), r=cell.getBoundingClientRect();
-  el.style.transition='left .15s ease, top .15s ease';
-  el.style.left=(r.left-sc.left)+'px'; el.style.top=(r.top-sc.top)+'px';
-  el.style.width=r.width+'px'; el.style.height=r.height+'px';
-  const rr=rotEl(el); rr.style.transition='transform .15s'; rr.style.transform='rotate(0deg)';
-  const c=costumeEl(el); if(c) c.classList.remove('show');
-  el.classList.add('placed');
-  cell.dataset.filled='1'; cell.textContent='';
+  const r=cell.getBoundingClientRect();
   sparkle(r.left+r.width/2, r.top+r.height/2);
+  el.classList.add('placed'); el.style.pointerEvents='none';
+  el.style.transition=''; el.style.left='0'; el.style.top='0'; el.style.width='100%'; el.style.height='100%';
+  const rr=rotEl(el); rr.style.transition=''; rr.style.transform='rotate(0deg)';
+  const c=costumeEl(el); if(c) c.classList.remove('show');
+  cell.textContent=''; cell.appendChild(el); cell.dataset.filled='1';   // буква теперь внутри блока
   if([...block.querySelectorAll('.syl-cell')].every(c=>c.dataset.filled==='1')) syllableReady(block);
 }
 function allBlocksReady(){ return sylBlocks.length>0 && sylBlocks.every(b=>b.dataset.ready==='1'); }
@@ -337,10 +335,11 @@ function syllableReady(block){
 function startPhase2(){
   phase=2; kickIdle();
   $('#scatter').style.pointerEvents='none';   // буквы все расставлены — не мешают
-  $('#sylLayer').style.zIndex='6';            // готовые слоги выше букв, их можно таскать
+  $('#sylLayer').style.zIndex='4';            // слоги выше букв, но ниже картинки слова
   const recv=$('#receiver'); recv.innerHTML=''; recvSlots=[];
-  current.syllables.forEach(syl=>{
+  current.syllables.forEach((syl,i)=>{
     const s=document.createElement('div'); s.className='recv-slot'; s.dataset.syl=syl; s.dataset.filled='0'; s.textContent=syl;
+    const b=sylBlocks[i]; if(b){ s.style.width=b.offsetWidth+'px'; s.style.height=b.offsetHeight+'px'; }
     recv.appendChild(s); recvSlots.push(s);
   });
   recv.classList.remove('hidden');
@@ -393,11 +392,11 @@ function placeBlockInRecv(block,slot){
   if(recvSlots.every(s=>s.dataset.filled==='1')) setTimeout(wordCompleteSyll,350);
 }
 function wordCompleteSyll(){
-  kickIdle();
+  kickIdle(); showArrows();                    // стрелки сразу
   showRewardObject(); playWord(current);
   const o=current.object||{}, hold=(o.image||o.video)?5000:2200;
   setTimeout(hideRewardObject, hold);
-  setTimeout(()=>{ showArrows(); showWordHoldOver($('#receiver')); }, hold+650);
+  setTimeout(()=>{ showWordHoldOver($('#receiver')); }, hold+650);
 }
 
 function sparkle(x,y){
@@ -447,7 +446,7 @@ function reformLetters(){
 }
 
 function playWordAnim(){
-  kickIdle();
+  kickIdle(); showArrows();                     // стрелки сразу
   const letters=placedLetters();
   letters.forEach((el,i)=> setTimeout(()=>{
     const r=rotEl(el); r.style.transition='transform .3s cubic-bezier(.2,1.5,.4,1)';
@@ -459,7 +458,7 @@ function playWordAnim(){
   setTimeout(()=>{ showRewardObject(); playWord(current); }, objAt);
   const o=current.object||{}, hold=(o.image||o.video)?5000:2200, holdEnd=objAt+hold;
   setTimeout(()=>{ hideRewardObject(); reformLetters(); }, holdEnd);
-  setTimeout(()=>{ showArrows(); showWordHoldOver($('#slots')); }, holdEnd+650);
+  setTimeout(()=>{ showWordHoldOver($('#slots')); }, holdEnd+650);
 }
 
 /* ---------- Удержание собранного слова ---------- */
