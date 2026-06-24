@@ -2,7 +2,6 @@
    БУКВОЕЖКИ — логика игры. Данные и ассеты — в words.js
    ============================================================ */
 
-/* ---------- Настройки ---------- */
 const IDLE_MIN=4000, IDLE_MAX=6000;
 const WAKE_MIN=150,  WAKE_MAX=520;
 const SPEED={vowel:55, sonor:45, voiced:60, voiceless:66, hiss:50, sign:24};
@@ -16,10 +15,8 @@ const FAMILY={};
 'ЪЬ'.split('').forEach(c=>FAMILY[c]='sign');
 function familyOf(ch){ return FAMILY[ch]||'voiceless'; }
 
-const COSTUMES={
-  vowel:'costumes/wings.png', voiceless:'costumes/fins.png',
-  sonor:'costumes/critter.png', voiced:'costumes/beetle.png', hiss:'costumes/snake.png'
-};
+const COSTUMES={ vowel:'costumes/wings.png', voiceless:'costumes/fins.png',
+  sonor:'costumes/critter.png', voiced:'costumes/beetle.png', hiss:'costumes/snake.png' };
 
 /* ---------- Аудио ---------- */
 const audioCache={};
@@ -30,6 +27,7 @@ function preloadFor(item){
     const cos=COSTUMES[familyOf(ch)]; if(cos){ const im=new Image(); im.src=assetURL(cos); }
   });
   const w=item.audio&&item.audio.word; if(w) getAudio(assetURL(w)).load();
+  if(item.syllableAudio) Object.values(item.syllableAudio).forEach(p=>getAudio(assetURL(p)).load());
   const o=item.object||{}; if(o.image){ const im=new Image(); im.src=assetURL(o.image); }
 }
 
@@ -44,30 +42,21 @@ function speak(text,rate=0.9){
   u.lang='ru-RU'; u.rate=rate; u.pitch=1.15; speechSynthesis.speak(u);
 }
 
-/* звук буквы по кругу, пока держат */
 let heldAudio=null;
-function startLetterLoop(ch){
-  stopLetterLoop();
-  const f=LETTER_SOUNDS[ch];
-  if(f){ const a=getAudio(assetURL(f)); a.loop=true; a.currentTime=0; a.play().catch(()=>{}); heldAudio=a; }
-  else { speak(ch,0.8); }
-}
+function startLetterLoop(ch){ stopLetterLoop(); const f=LETTER_SOUNDS[ch];
+  if(f){ const a=getAudio(assetURL(f)); a.loop=true; a.currentTime=0; a.play().catch(()=>{}); heldAudio=a; } else speak(ch,0.8); }
 function stopLetterLoop(){ if(heldAudio){ heldAudio.pause(); heldAudio.loop=false; heldAudio=null; } }
 
-/* слово: один раз, и отдельно — по кругу на удержании */
-function playWord(item){
-  const f=item.audio&&item.audio.word;
-  if(f){ const a=getAudio(assetURL(f)); a.loop=false; a.currentTime=0; a.play().catch(()=>{}); }
-  else speak(item.word,0.85);
-}
+function playWord(item){ const f=item.audio&&item.audio.word;
+  if(f){ const a=getAudio(assetURL(f)); a.loop=false; a.currentTime=0; a.play().catch(()=>{}); } else speak(item.word,0.85); }
 let heldWordAudio=null;
-function startWordLoop(item){
-  stopWordLoop();
-  const f=item.audio&&item.audio.word;
-  if(f){ const a=getAudio(assetURL(f)); a.loop=true; a.currentTime=0; a.play().catch(()=>{}); heldWordAudio=a; }
-  else speak(item.word,0.85);
-}
+function startWordLoop(item){ stopWordLoop(); const f=item.audio&&item.audio.word;
+  if(f){ const a=getAudio(assetURL(f)); a.loop=true; a.currentTime=0; a.play().catch(()=>{}); heldWordAudio=a; } else speak(item.word,0.85); }
 function stopWordLoop(){ if(heldWordAudio){ heldWordAudio.pause(); heldWordAudio.loop=false; heldWordAudio=null; } }
+let heldSyl=null;
+function startSylLoop(syl){ stopSylLoop(); const f=current.syllableAudio&&current.syllableAudio[syl];
+  if(f){ const a=getAudio(assetURL(f)); a.loop=true; a.currentTime=0; a.play().catch(()=>{}); heldSyl=a; } }
+function stopSylLoop(){ if(heldSyl){ heldSyl.pause(); heldSyl.loop=false; heldSyl=null; } }
 
 /* ---------- Утилиты ---------- */
 const $=s=>document.querySelector(s);
@@ -78,17 +67,15 @@ function costumeEl(el){ return el.querySelector('.l-costume'); }
 function showArrows(){ $('#btnPrev').classList.remove('hidden'); $('#btnNext').classList.remove('hidden'); }
 function hideArrows(){ $('#btnPrev').classList.add('hidden'); $('#btnNext').classList.add('hidden'); }
 function hideWordHold(){ $('#wordHold').classList.add('hidden'); }
-function showWordHold(){
+function showWordHoldOver(target){
   const stg=document.querySelector('#game .stage').getBoundingClientRect();
-  const sl=$('#slots').getBoundingClientRect(), pad=34, wh=$('#wordHold');
+  const sl=target.getBoundingClientRect(), pad=34, wh=$('#wordHold');
   wh.style.left=(sl.left-stg.left-pad)+'px'; wh.style.top=(sl.top-stg.top-pad)+'px';
   wh.style.width=(sl.width+pad*2)+'px'; wh.style.height=(sl.height+pad*2)+'px';
   wh.classList.remove('hidden');
 }
 
-/* ============================================================
-   ЭКРАН ВЫБОРА
-   ============================================================ */
+/* ---------- Экран выбора ---------- */
 function buildPicker(){
   const box=$('#wordTiles'); box.innerHTML='';
   WORDS.forEach(item=>{
@@ -98,51 +85,89 @@ function buildPicker(){
     t.addEventListener('pointerup', e=>{ e.preventDefault(); startGame(item); });
     box.appendChild(t);
   });
-  WORDS.slice(0,4).forEach(preloadFor);
+  WORDS.slice(0,3).forEach(preloadFor);
 }
 
 /* ============================================================
-   ИГРА
+   ИГРА — общий вход
    ============================================================ */
 let current=null, slotEls=[], filledCount=0;
+let phase=0, sylBlocks=[], recvSlots=[];
+
+function makeLetterEl(ch,i){
+  const fam=familyOf(ch), src=LETTER_IMAGES[ch], cos=COSTUMES[fam];
+  const l=document.createElement('div');
+  l.className='letter'+(src?' img':''); l.dataset.letter=ch; l.dataset.fam=fam;
+  const glyph = src?`<img class="glyph" src="${assetURL(src)}" alt="${ch}" draggable="false">`:`<span class="glyph">${ch}</span>`;
+  l.innerHTML=`<div class="l-rot">${cos?`<div class="l-costume"><img src="${assetURL(cos)}" alt=""></div>`:''}<div class="l-squash">${glyph}</div></div>`;
+  if(!src) l.style.background=`var(--c${(i%6)+1})`;
+  attachDrag(l); return l;
+}
 
 function startGame(item){
-  current=item; filledCount=0;
-  $('#picker').classList.add('hidden');
-  $('#game').classList.remove('hidden');
+  current=item; filledCount=0; phase=0;
+  $('#picker').classList.add('hidden'); $('#game').classList.remove('hidden');
   $('#reward').className='reward'; $('#reward').innerHTML='';
   hideArrows(); hideWordHold();
-  stopLetterLoop(); stopWordLoop(); kickIdle();
+  stopLetterLoop(); stopWordLoop(); stopSylLoop(); kickIdle();
+  $('#slots').innerHTML=''; slotEls=[];
+  $('#sylLayer').innerHTML=''; sylBlocks=[];
+  $('#receiver').innerHTML=''; $('#receiver').classList.add('hidden'); recvSlots=[];
+  $('#scatter').innerHTML='';
   preloadFor(item);
+  if(item.mode==='syllables') buildSyllableStage(item);
+  else buildLetterStage(item);
+}
 
-  const slots=$('#slots'); slots.innerHTML=''; slotEls=[];
+/* ---------- Режим БУКВЫ ---------- */
+function buildLetterStage(item){
+  const slots=$('#slots');
   [...item.word].forEach(ch=>{
     const s=document.createElement('div');
     s.className='slot target'; s.textContent=ch; s.dataset.letter=ch; s.dataset.filled='0';
     slots.appendChild(s); slotEls.push(s);
   });
-
-  const sc=$('#scatter'); sc.innerHTML='';
+  const sc=$('#scatter');
   let order=shuffle([...item.word]);
   if(order.join('')===item.word && item.word.length>1) order=shuffle(order);
-  const els=[];
-  order.forEach((ch,i)=>{
-    const fam=familyOf(ch), src=LETTER_IMAGES[ch], cos=COSTUMES[fam];
-    const l=document.createElement('div');
-    l.className='letter'+(src?' img':''); l.dataset.letter=ch; l.dataset.fam=fam;
-    const glyph = src?`<img class="glyph" src="${assetURL(src)}" alt="${ch}" draggable="false">`:`<span class="glyph">${ch}</span>`;
-    l.innerHTML=`<div class="l-rot">${cos?`<div class="l-costume"><img src="${assetURL(cos)}" alt=""></div>`:''}<div class="l-squash">${glyph}</div></div>`;
-    if(!src) l.style.background=`var(--c${(i%6)+1})`;
-    attachDrag(l); sc.appendChild(l); els.push(l);
-  });
+  const els=order.map((ch,i)=>{ const l=makeLetterEl(ch,i); sc.appendChild(l); return l; });
   requestAnimationFrame(()=>{ scatterLetters(els); scheduleWander(); });
+}
+
+/* ---------- Режим СЛОГИ ---------- */
+function buildSyllableStage(item){
+  phase=1;
+  const layer=$('#sylLayer');
+  item.syllables.forEach((syl,bi)=>{
+    const b=document.createElement('div'); b.className='syl-block'; b.dataset.syl=syl; b.dataset.bi=bi; b.dataset.ready='0';
+    [...syl].forEach(ch=>{
+      const cell=document.createElement('div'); cell.className='syl-cell'; cell.dataset.letter=ch; cell.dataset.filled='0'; cell.textContent=ch;
+      b.appendChild(cell);
+    });
+    layer.appendChild(b); sylBlocks.push(b);
+  });
+  const sc=$('#scatter');
+  const order=shuffle([...item.syllables.join('')]);
+  const els=order.map((ch,i)=>{ const l=makeLetterEl(ch,i); sc.appendChild(l); return l; });
+  requestAnimationFrame(()=>{ scatterBlocks(); scatterLetters(els); scheduleWander(); });
+}
+
+function scatterBlocks(){
+  const lay=$('#sylLayer'), W=lay.clientWidth, H=lay.clientHeight, n=sylBlocks.length;
+  sylBlocks.forEach((b,i)=>{
+    const bw=b.offsetWidth, bh=b.offsetHeight;
+    let left=((i+0.5)/n)*W - bw/2 + rand(-18,18);
+    let top=(i%2===0?rand(0.05,0.15):rand(0.20,0.30))*H;
+    left=Math.max(6,Math.min(W-bw-6,left)); top=Math.max(6,Math.min(H-bh-6,top));
+    b.style.left=left+'px'; b.style.top=top+'px';
+  });
 }
 
 function scatterLetters(els){
   const sc=$('#scatter'), W=sc.clientWidth, H=sc.clientHeight, lw=84, lh=96;
   els.forEach((el,i)=>{
     const topRegion=(i%2===0);
-    const top=topRegion?rand(0.04,0.26):rand(0.60,0.84);
+    const top=topRegion?rand(0.34,0.52):rand(0.60,0.88);
     const left=rand(0.04,0.80), rot=rand(-16,16);
     el.dataset.homeRot=rot;
     el.style.left=(left*(W-lw))+'px'; el.style.top=(top*(H-lh))+'px';
@@ -162,8 +187,10 @@ function startWander(){
   const els=[...document.querySelectorAll('#scatter .letter:not(.placed)')];
   if(els.length===0) return;
   const sc=$('#scatter'), W=sc.clientWidth, H=sc.clientHeight;
-  const scR=sc.getBoundingClientRect(), slR=$('#slots').getBoundingClientRect();
-  zone={ x:slR.left-scR.left-30, y:slR.top-scR.top-30, w:slR.width+60, h:slR.height+60, W, H };
+  let ax=-9999, ay=-9999, aw=0, ah=0;
+  const target = (phase===2)?$('#receiver'):(slotEls.length?$('#slots'):null);
+  if(target){ const scR=sc.getBoundingClientRect(), r=target.getBoundingClientRect(); ax=r.left-scR.left-30; ay=r.top-scR.top-30; aw=r.width+60; ah=r.height+60; }
+  zone={ x:ax, y:ay, w:aw, h:ah, W, H };
   let wake=0;
   movers=shuffle(els).map((el,idx)=>{
     const fam=el.dataset.fam, sp=SPEED[fam]||50, ang=rand(0,Math.PI*2);
@@ -189,10 +216,7 @@ function wanderFrame(now){
   let dt=(now-lastT)/1000; lastT=now; if(dt>0.05) dt=0.05;
   const t=now/1000, lw=78, lh=90, maxX=zone.W-lw, maxY=zone.H-lh;
   movers.forEach(m=>{
-    if(!m.awake){
-      if(now-wanderStartTime>=m.wakeAt){ m.awake=true; const c=costumeEl(m.el); if(c) c.classList.add('show'); }
-      else return;
-    }
+    if(!m.awake){ if(now-wanderStartTime>=m.wakeAt){ m.awake=true; const c=costumeEl(m.el); if(c) c.classList.add('show'); } else return; }
     if(m.fam==='voiceless'){ const a=Math.atan2(m.vy,m.vx)+rand(-0.7,0.7)*dt; m.vx=Math.cos(a)*m.sp; m.vy=Math.sin(a)*m.sp; }
     if(m.fam==='voiced'){ m.vx+=rand(-50,50)*dt; m.vy+=rand(-50,50)*dt; }
     const cx=m.x+lw/2, cy=m.y+lh/2;
@@ -219,7 +243,7 @@ function wanderFrame(now){
   wanderRAF=requestAnimationFrame(wanderFrame);
 }
 
-/* ---------- Перетаскивание + squash ---------- */
+/* ---------- Перетаскивание буквы + squash ---------- */
 function attachDrag(el){
   let dragging=false, offX=0, offY=0;
   el.addEventListener('pointerdown', e=>{
@@ -229,8 +253,7 @@ function attachDrag(el){
     startLetterLoop(el.dataset.letter);
     const c=costumeEl(el); if(c) c.classList.remove('show');
     const r0=rotEl(el); r0.style.transition='transform .15s'; r0.style.transform='rotate(0deg)';
-    el.classList.add('squashing','dragging');
-    el.style.zIndex=60;
+    el.classList.add('squashing','dragging'); el.style.zIndex=60;
     const r=el.getBoundingClientRect(); offX=e.clientX-r.left; offY=e.clientY-r.top;
     moveTo(e.clientX,e.clientY);
   });
@@ -238,29 +261,34 @@ function attachDrag(el){
   el.addEventListener('pointerup', e=>{
     if(!dragging) return; dragging=false; stopLetterLoop();
     el.classList.remove('squashing','dragging'); el.style.zIndex='';
-    const slot=slotUnder(e.clientX,e.clientY);
-    slotEls.forEach(s=>s.classList.remove('over'));
-    if(slot && slot.dataset.filled==='0' && slot.dataset.letter===el.dataset.letter){ placeInSlot(el,slot); }
-    else { restAt(el); }
-    if(filledCount<current.word.length) scheduleWander();
+    slotEls.forEach(s=>s.classList.remove('over')); sylBlocks.forEach(b=>b.classList.remove('over'));
+    if(current.mode==='syllables'){
+      const block=blockUnder(e.clientX,e.clientY,el.dataset.letter);
+      if(block) placeLetterInBlock(el,block); else restAt(el);
+      if(!allBlocksReady()) scheduleWander();
+    } else {
+      const slot=slotUnder(e.clientX,e.clientY);
+      if(slot && slot.dataset.filled==='0' && slot.dataset.letter===el.dataset.letter){ placeInSlot(el,slot); }
+      else { restAt(el); }
+      if(filledCount<current.word.length) scheduleWander();
+    }
   });
   el.addEventListener('lostpointercapture', ()=>{ if(dragging){ dragging=false; stopLetterLoop(); el.classList.remove('squashing','dragging'); el.style.zIndex=''; restAt(el); scheduleWander(); } });
   function moveTo(x,y){
     const sc=$('#scatter').getBoundingClientRect();
     el.style.left=(x-sc.left-offX)+'px'; el.style.top=(y-sc.top-offY)+'px';
-    const s=slotUnder(x,y);
-    slotEls.forEach(o=>o.classList.toggle('over', o===s && s.dataset.filled==='0' && s.dataset.letter===el.dataset.letter));
+    if(current.mode==='syllables'){
+      const b=blockUnder(x,y,el.dataset.letter); sylBlocks.forEach(o=>o.classList.toggle('over', o===b));
+    } else {
+      const s=slotUnder(x,y);
+      slotEls.forEach(o=>o.classList.toggle('over', o===s && s.dataset.filled==='0' && s.dataset.letter===el.dataset.letter));
+    }
   }
 }
 
-function restAt(el){
-  const r=rotEl(el); r.style.transition='transform .2s ease'; r.style.transform=`rotate(${el.dataset.homeRot||0}deg)`;
-}
+function restAt(el){ const r=rotEl(el); r.style.transition='transform .2s ease'; r.style.transform=`rotate(${el.dataset.homeRot||0}deg)`; }
 
-function slotUnder(x,y){
-  for(const s of slotEls){ const r=s.getBoundingClientRect(); if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom) return s; }
-  return null;
-}
+function slotUnder(x,y){ for(const s of slotEls){ const r=s.getBoundingClientRect(); if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom) return s; } return null; }
 
 function placeInSlot(el,slot){
   const sc=$('#scatter').getBoundingClientRect(), r=slot.getBoundingClientRect();
@@ -276,6 +304,100 @@ function placeInSlot(el,slot){
   if(filledCount===current.word.length) setTimeout(playWordAnim,250);
 }
 
+/* ---------- Слоги: буква в блок ---------- */
+function blockUnder(x,y,ch){
+  for(const b of sylBlocks){ if(b.dataset.ready==='1') continue; const r=b.getBoundingClientRect();
+    if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom){
+      if([...b.querySelectorAll('.syl-cell')].some(c=>c.dataset.filled==='0'&&c.dataset.letter===ch)) return b;
+    } }
+  return null;
+}
+function placeLetterInBlock(el,block){
+  const ch=el.dataset.letter;
+  const cell=[...block.querySelectorAll('.syl-cell')].find(c=>c.dataset.filled==='0'&&c.dataset.letter===ch);
+  if(!cell){ restAt(el); return; }
+  const sc=$('#scatter').getBoundingClientRect(), r=cell.getBoundingClientRect();
+  el.style.transition='left .15s ease, top .15s ease';
+  el.style.left=(r.left-sc.left)+'px'; el.style.top=(r.top-sc.top)+'px';
+  el.style.width=r.width+'px'; el.style.height=r.height+'px';
+  const rr=rotEl(el); rr.style.transition='transform .15s'; rr.style.transform='rotate(0deg)';
+  const c=costumeEl(el); if(c) c.classList.remove('show');
+  el.classList.add('placed');
+  cell.dataset.filled='1'; cell.textContent='';
+  sparkle(r.left+r.width/2, r.top+r.height/2);
+  if([...block.querySelectorAll('.syl-cell')].every(c=>c.dataset.filled==='1')) syllableReady(block);
+}
+function allBlocksReady(){ return sylBlocks.length>0 && sylBlocks.every(b=>b.dataset.ready==='1'); }
+function syllableReady(block){
+  block.dataset.ready='1'; block.classList.add('ready');
+  block.style.animation='sylpop .5s ease'; setTimeout(()=>{ block.style.animation=''; },520);
+  attachSyllableDrag(block);
+  if(allBlocksReady()) setTimeout(startPhase2,600);
+}
+function startPhase2(){
+  phase=2; kickIdle();
+  const recv=$('#receiver'); recv.innerHTML=''; recvSlots=[];
+  current.syllables.forEach(syl=>{
+    const s=document.createElement('div'); s.className='recv-slot'; s.dataset.syl=syl; s.dataset.filled='0'; s.textContent=syl;
+    recv.appendChild(s); recvSlots.push(s);
+  });
+  recv.classList.remove('hidden');
+}
+
+/* ---------- Слоги: блок в приёмник + удержание-звук ---------- */
+function recvUnder(x,y,syl){
+  for(const s of recvSlots){ if(s.dataset.filled==='1') continue; if(s.dataset.syl!==syl) continue;
+    const r=s.getBoundingClientRect(); if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom) return s; }
+  return null;
+}
+function attachSyllableDrag(block){
+  let dragging=false, moved=false, offX=0, offY=0, startX=0, startY=0, homeL=0, homeT=0;
+  block.addEventListener('pointerdown', e=>{
+    if(block.dataset.placed==='1') return;
+    block.setPointerCapture(e.pointerId);
+    dragging=true; moved=false; startX=e.clientX; startY=e.clientY;
+    const lay=$('#sylLayer').getBoundingClientRect(), r=block.getBoundingClientRect();
+    offX=e.clientX-r.left; offY=e.clientY-r.top; homeL=r.left-lay.left; homeT=r.top-lay.top;
+    startSylLoop(block.dataset.syl);   // касание готового слога — звук по кругу
+    block.style.zIndex=70;
+  });
+  block.addEventListener('pointermove', e=>{
+    if(!dragging) return;
+    if(!moved && Math.hypot(e.clientX-startX,e.clientY-startY)>8){ moved=true; stopSylLoop(); block.classList.add('dragging'); }
+    if(moved){
+      const lay=$('#sylLayer').getBoundingClientRect();
+      block.style.left=(e.clientX-lay.left-offX)+'px'; block.style.top=(e.clientY-lay.top-offY)+'px';
+      const rs=recvUnder(e.clientX,e.clientY,block.dataset.syl); recvSlots.forEach(s=>s.classList.toggle('over', s===rs));
+    }
+  });
+  block.addEventListener('pointerup', e=>{
+    if(!dragging) return; dragging=false; block.style.zIndex='';
+    if(!moved){ stopSylLoop(); return; }      // был только звук-удержание
+    block.classList.remove('dragging');
+    const rs=recvUnder(e.clientX,e.clientY,block.dataset.syl); recvSlots.forEach(s=>s.classList.remove('over'));
+    if(rs) placeBlockInRecv(block,rs); else returnBlock(block,homeL,homeT);
+  });
+  block.addEventListener('lostpointercapture', ()=>{ if(dragging){ dragging=false; stopSylLoop(); if(moved) returnBlock(block,homeL,homeT); } });
+}
+function returnBlock(block,L,T){ block.style.transition='left .22s ease, top .22s ease'; block.style.left=L+'px'; block.style.top=T+'px'; }
+function placeBlockInRecv(block,slot){
+  const lay=$('#sylLayer').getBoundingClientRect(), r=slot.getBoundingClientRect(), b=block.getBoundingClientRect();
+  block.style.transition='left .15s ease, top .15s ease';
+  block.style.left=(r.left+r.width/2 - b.width/2 - lay.left)+'px';
+  block.style.top=(r.top+r.height/2 - b.height/2 - lay.top)+'px';
+  block.dataset.placed='1'; block.classList.add('placed');
+  slot.dataset.filled='1'; slot.classList.add('filled'); slot.textContent='';
+  sparkle(r.left+r.width/2, r.top+r.height/2);
+  if(recvSlots.every(s=>s.dataset.filled==='1')) setTimeout(wordCompleteSyll,350);
+}
+function wordCompleteSyll(){
+  kickIdle();
+  showRewardObject(); playWord(current);
+  const o=current.object||{}, hold=(o.image||o.video)?5000:2200;
+  setTimeout(hideRewardObject, hold);
+  setTimeout(()=>{ showArrows(); showWordHoldOver($('#receiver')); }, hold+650);
+}
+
 function sparkle(x,y){
   const marks=['✨','⭐','🌟'];
   for(let i=0;i<5;i++){
@@ -287,7 +409,7 @@ function sparkle(x,y){
   }
 }
 
-/* ---------- «Оживление» слова ---------- */
+/* ---------- «Оживление» слова (буквы) ---------- */
 function placedLetters(){ return [...document.querySelectorAll('.letter.placed')]; }
 
 function showRewardObject(){
@@ -302,7 +424,6 @@ function hideRewardObject(){
   const r=$('#reward'); r.classList.remove('show'); r.classList.add('out');
   setTimeout(()=>{ if(!$('#reward').classList.contains('show')){ $('#reward').className='reward'; $('#reward').innerHTML=''; } }, 360);
 }
-
 function spreadLetters(){
   const letters=placedLetters();
   const rects=letters.map(el=>el.getBoundingClientRect());
@@ -323,43 +444,41 @@ function reformLetters(){
   }, i*60));
 }
 
-/* автопоказ один раз после сборки */
 function playWordAnim(){
   kickIdle();
   const letters=placedLetters();
   letters.forEach((el,i)=> setTimeout(()=>{
     const r=rotEl(el); r.style.transition='transform .3s cubic-bezier(.2,1.5,.4,1)';
-    r.style.transform='translateY(-16px) scale(1.12)';
-    setTimeout(()=> r.style.transform='translateY(0) scale(1)', 300);
+    r.style.transform='translateY(-16px) scale(1.12)'; setTimeout(()=> r.style.transform='translateY(0) scale(1)', 300);
   }, i*90));
   const jumpDone=letters.length*90+360;
   setTimeout(spreadLetters, jumpDone);
   const objAt=jumpDone+460;
   setTimeout(()=>{ showRewardObject(); playWord(current); }, objAt);
-  const o=current.object||{}; const hold=(o.image||o.video)?5000:2200; const holdEnd=objAt+hold;
+  const o=current.object||{}, hold=(o.image||o.video)?5000:2200, holdEnd=objAt+hold;
   setTimeout(()=>{ hideRewardObject(); reformLetters(); }, holdEnd);
-  setTimeout(()=>{ showArrows(); showWordHold(); }, holdEnd+650);
+  setTimeout(()=>{ showArrows(); showWordHoldOver($('#slots')); }, holdEnd+650);
 }
 
-/* удержание собранного слова: гифка + звук по кругу, пока держишь */
+/* ---------- Удержание собранного слова ---------- */
 let wordHeld=false;
 function bindWordHold(){
   const wh=$('#wordHold');
   wh.addEventListener('pointerdown', e=>{
     e.preventDefault(); wordHeld=true; wh.setPointerCapture(e.pointerId);
-    kickIdle(); spreadLetters(); showRewardObject(); startWordLoop(current);
+    kickIdle(); if(current.mode!=='syllables') spreadLetters(); showRewardObject(); startWordLoop(current);
   });
-  const end=()=>{ if(!wordHeld) return; wordHeld=false; stopWordLoop(); hideRewardObject(); reformLetters(); };
+  const end=()=>{ if(!wordHeld) return; wordHeld=false; stopWordLoop(); hideRewardObject(); if(current.mode!=='syllables') reformLetters(); };
   wh.addEventListener('pointerup', e=>{ e.preventDefault(); end(); });
   wh.addEventListener('pointercancel', end);
   wh.addEventListener('lostpointercapture', end);
 }
 
-/* ---------- Кнопки (pointerup — срабатывают с первого раза) ---------- */
+/* ---------- Кнопки ---------- */
 function onTap(sel, fn){ $(sel).addEventListener('pointerup', e=>{ e.preventDefault(); fn(e); }); }
 function gotoWord(delta){ const i=WORDS.findIndex(w=>w.id===current.id); const n=(i+delta+WORDS.length)%WORDS.length; startGame(WORDS[n]); }
 onTap('#btnReplay', ()=>current&&playWord(current));
-onTap('#btnHome', ()=>{ stopLetterLoop(); stopWordLoop(); kickIdle(); hideWordHold(); $('#game').classList.add('hidden'); $('#picker').classList.remove('hidden'); });
+onTap('#btnHome', ()=>{ stopLetterLoop(); stopWordLoop(); stopSylLoop(); kickIdle(); hideWordHold(); $('#game').classList.add('hidden'); $('#picker').classList.remove('hidden'); });
 onTap('#btnPrev', ()=>gotoWord(-1));
 onTap('#btnNext', ()=>gotoWord(1));
 

@@ -18,25 +18,46 @@ const LETTER_IMAGES={
   'Я':'letters/33_YA.png'
 };
 
-/* ---------- Звуки букв — весь алфавит (letter_voice/<Буква>.mp3) ---------- */
+/* ---------- Звуки букв — весь алфавит ---------- */
 const LETTER_SOUNDS={};
 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'.split('').forEach(ch=>{ LETTER_SOUNDS[ch]='letter_voice/'+ch+'.mp3'; });
 
-/* ---------- Слова ----------
-   image  — гифка предмета: video/<слово>.gif (кириллица, строчные)
-   audio  — звук слова: words_voice/<Слово>.mp3 (кириллица, с заглавной)
-   emoji  — запасной вариант, если гифка не загрузится */
-const WORD_LIST=[
-  {w:'дом', emoji:'🏠'}, {w:'мяч', emoji:'⚽'}, {w:'сом', emoji:'🐟'}, {w:'ком', emoji:'⚪'},
-  {w:'кот', emoji:'🐱'}, {w:'кит', emoji:'🐳'}, {w:'рот', emoji:'👄'}, {w:'нос', emoji:'👃'},
-  {w:'лес', emoji:'🌲'}, {w:'сок', emoji:'🧃'}, {w:'сыр', emoji:'🧀'}, {w:'мак', emoji:'🌺'}
+function cap(s){ return s[0].toUpperCase()+s.slice(1).toLowerCase(); }
+
+/* ---------- Простые слова (буквы → слово) ---------- */
+const SIMPLE=[
+  {w:'дом',emoji:'🏠'},{w:'мяч',emoji:'⚽'},{w:'сом',emoji:'🐟'},{w:'ком',emoji:'⚪'},
+  {w:'кот',emoji:'🐱'},{w:'кит',emoji:'🐳'},{w:'рот',emoji:'👄'},{w:'нос',emoji:'👃'},
+  {w:'лес',emoji:'🌲'},{w:'сок',emoji:'🧃'},{w:'сыр',emoji:'🧀'},{w:'мак',emoji:'🌺'}
 ];
-const WORDS=WORD_LIST.map(({w,emoji})=>{
-  const up=w.toUpperCase(), cap=w[0].toUpperCase()+w.slice(1);
-  return {
-    id:w, word:up, syllables:[up], level:1,
-    object:{ emoji, image:'video/'+w+'.gif', video:null },
-    audio:{ word:'words_voice/'+cap+'.mp3', sentence:null },
-    sentence:null
-  };
+/* ---------- Слоговые слова (буквы → слоги → слово) ---------- */
+const SYLL=[
+  {w:'мама',emoji:'👩',syl:['МА','МА']},
+  {w:'папа',emoji:'👨',syl:['ПА','ПА']},
+  {w:'рыба',emoji:'🐟',syl:['РЫ','БА']},
+  {w:'коза',emoji:'🐐',syl:['КО','ЗА']},
+  {w:'молоко',emoji:'🥛',syl:['МО','ЛО','КО']}
+];
+
+function makeLetterWord({w,emoji}){
+  const up=w.toUpperCase();
+  return { id:w, word:up, mode:'letters', syllables:[up], level:1,
+    object:{emoji,image:'video/'+w+'.gif',video:null},
+    audio:{word:'words_voice/'+cap(w)+'.mp3',sentence:null}, sentence:null };
+}
+function makeSyllWord({w,emoji,syl}){
+  const up=w.toUpperCase(), sa={};
+  syl.forEach(s=>{ sa[s.toUpperCase()]='syllables_voice/'+cap(s)+'.mp3'; });
+  return { id:w, word:up, mode:'syllables', syllables:syl.map(s=>s.toUpperCase()), level:2,
+    object:{emoji,image:'video/'+w+'.gif',video:null},
+    audio:{word:'words_voice/'+cap(w)+'.mp3',sentence:null},
+    syllableAudio:sa, sentence:null };
+}
+
+/* поток: после каждых двух простых слов — одно слоговое */
+const WORDS=[]; let _si=0;
+SIMPLE.forEach((sw,i)=>{
+  WORDS.push(makeLetterWord(sw));
+  if((i+1)%2===0 && _si<SYLL.length) WORDS.push(makeSyllWord(SYLL[_si++]));
 });
+while(_si<SYLL.length) WORDS.push(makeSyllWord(SYLL[_si++]));
