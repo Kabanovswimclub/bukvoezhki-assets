@@ -178,3 +178,35 @@ body{
   #splash .splash-start{transition:none;}
   #splash .splash-start.show{animation:none;}
 }
+/* ===== Меню-лес (#menu) — статика слоёв ===== */
+#menu{ overflow:hidden; background:#bfe3f2; -webkit-tap-highlight-color:transparent; user-select:none; }
+
+#menu .m-bg{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:1; }
+#menu .m-grass{ position:absolute; left:0; bottom:0; width:100%; height:auto; z-index:2; }
+
+#menu .m-card{
+  position:absolute; left:50%; top:48%; transform:translate(-50%,-50%);
+  width:min(80vw,360px); z-index:3; cursor:pointer;
+}
+#menu .m-frame{ position:relative; display:block; width:100%; height:auto; }
+#menu .m-card-content{
+  position:absolute; inset:0;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:.4em; padding:14% 12%; box-sizing:border-box; text-align:center;
+}
+#menu .m-word-art{ display:flex; align-items:center; justify-content:center; max-height:60%; }
+#menu .m-word-img{ max-width:100%; max-height:34vh; height:auto; object-fit:contain; }
+#menu .m-word-emoji{ font-size:clamp(48px,16vw,96px); line-height:1; }
+#menu .m-word-text{
+  font-family:'Fredoka',system-ui,sans-serif; font-weight:700;
+  font-size:clamp(22px,7vw,34px); letter-spacing:1px; color:#5a3b1a;
+}
+
+#menu .m-trees{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:4; pointer-events:none; }
+#menu .m-bushes{ position:absolute; left:0; bottom:0; width:100%; height:auto; z-index:5; pointer-events:none; }
+
+#menu .m-logo{
+  position:absolute; left:50%; top:2.5vh; transform:translateX(-50%);
+  width:auto; max-width:62vw; max-height:14vh; height:auto; z-index:6;
+  filter:drop-shadow(0 6px 12px rgba(80,50,20,.2));
+}
