@@ -485,3 +485,4 @@ onTap('#btnNext', ()=>gotoWord(1));
 
 bindWordHold();
 buildPicker();
+<script src="splash.js"></script>
