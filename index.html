@@ -11,6 +11,16 @@
 </head>
 <body>
 
+<section id="splash" class="screen">
+  <div class="splash-inner">
+    <img id="splashLogo" class="splash-logo" alt="Буквоежки">
+    <button id="splashStart" class="splash-start" type="button">Начать игру</button>
+  </div>
+</section>
+
+<!-- заглушка под меню (строим следующим этапом). Если #menu уже есть — НЕ дублируй -->
+<section id="menu" class="screen hidden"></section>
+  
 <!-- ЭКРАН ВЫБОРА -->
 <section id="picker" class="screen">
   <h1>Буквоежки</h1>
@@ -38,5 +48,6 @@
 
 <script src="words.js"></script>
 <script src="app.js"></script>
+<script src="splash.js"></script>
 </body>
 </html>
