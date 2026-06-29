@@ -479,7 +479,7 @@ function bindWordHold(){
 function onTap(sel, fn){ $(sel).addEventListener('pointerup', e=>{ e.preventDefault(); fn(e); }); }
 function gotoWord(delta){ const i=WORDS.findIndex(w=>w.id===current.id); const n=(i+delta+WORDS.length)%WORDS.length; startGame(WORDS[n]); }
 onTap('#btnReplay', ()=>current&&playWord(current));
-onTap('#btnHome', ()=>{ stopLetterLoop(); stopWordLoop(); stopSylLoop(); kickIdle(); hideWordHold(); $('#game').classList.add('hidden'); $('#picker').classList.remove('hidden'); });
+onTap('#btnHome', ()=>{ stopLetterLoop(); stopWordLoop(); stopSylLoop(); kickIdle(); hideWordHold(); $('#game').classList.add('hidden'); showMenu(); });
 onTap('#btnPrev', ()=>gotoWord(-1));
 onTap('#btnNext', ()=>gotoWord(1));
 
