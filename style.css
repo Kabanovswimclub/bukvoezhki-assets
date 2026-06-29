@@ -178,52 +178,46 @@ body{
   #splash .splash-start{transition:none;}
   #splash .splash-start.show{animation:none;}
 }
-/* ===== Меню-лес (#menu) — статика + полоса алфавита ===== */
+/* ===== Меню-лес (#menu) — этап 3: тропинка, карточка, ёжик ===== */
 #menu{ overflow:hidden; background:#bfe3f2; -webkit-tap-highlight-color:transparent; user-select:none; }
 
 #menu .m-bg{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:1; }
-#menu .m-grass{ position:absolute; left:0; width:100%; height:auto; bottom:-39.75vw; z-index:5; }
-
-#menu .m-card{
-    position:absolute; left:50%; top:60%; transform:translate(-50%,-50%);
-  width:min(80vw,360px); z-index:3; cursor:pointer;
-}
-#menu .m-card{ display:none; } /* временно — карточка вернётся на этапе 3 */
-#menu .m-frame{ position:relative; display:block; width:100%; height:auto; }
-#menu .m-card-content{
-  position:absolute; inset:0;
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:.4em; padding:14% 12%; box-sizing:border-box; text-align:center;
-}
-#menu .m-word-art{ display:flex; align-items:center; justify-content:center; max-height:60%; }
-#menu .m-word-img{ max-width:100%; max-height:30vh; height:auto; object-fit:contain; }
-#menu .m-word-emoji{ font-size:clamp(48px,16vw,96px); line-height:1; }
-#menu .m-word-text{
-  font-family:'Fredoka',system-ui,sans-serif; font-weight:700;
-  font-size:clamp(22px,7vw,34px); letter-spacing:1px; color:#5a3b1a;
-}
-
+#menu .m-grass{ position:absolute; left:0; width:100%; height:auto; bottom:-39.75vw; z-index:5; pointer-events:none; }
 #menu .m-trees{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:4; pointer-events:none; }
 
-/* логотип — правый верхний угол */
-#menu .m-logo{
-  position:absolute; top:1.5vh; right:3vw;
-  width:auto; max-width:30vw; max-height:8.5vh; height:auto; z-index:7;
-  filter:drop-shadow(0 5px 10px rgba(80,50,20,.22));
-}
+/* карточка слова */
+#menu .m-card{ position:absolute; left:50%; top:60%; transform:translate(-50%,-50%); width:min(80vw,360px); z-index:3; cursor:pointer; }
+#menu .m-frame{ position:relative; display:block; width:100%; height:auto; }
+#menu .m-card-content{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:13% 11%; box-sizing:border-box; }
+#menu .m-word-letters{ display:flex; align-items:center; justify-content:center; gap:4px; width:100%; max-height:100%; }
+#menu .m-word-letters img{ height:auto; max-height:100%; object-fit:contain; -webkit-user-drag:none; }
+#menu .m-sign img{ width:42%; max-height:100%; object-fit:contain; -webkit-user-drag:none; }
+#menu .m-card-content.in-up{ animation:mCardUp .26s ease; }
+#menu .m-card-content.in-down{ animation:mCardDown .26s ease; }
+@keyframes mCardUp{ from{opacity:0; transform:translateY(16px);} to{opacity:1; transform:none;} }
+@keyframes mCardDown{ from{opacity:0; transform:translateY(-16px);} to{opacity:1; transform:none;} }
 
-/* полоса алфавита (тропинка) — между логотипом и карточкой, ~15% */
-#menu .m-path{
-  position:absolute; left:4%; right:4%; top:14%; height:15%;
-  z-index:6; display:flex; flex-direction:column; justify-content:center; gap:6px;
-  pointer-events:none;
-}
+/* логотип — правый верхний угол */
+#menu .m-logo{ position:absolute; top:1.5vh; right:3vw; width:auto; max-width:30vw; max-height:8.5vh; height:auto; z-index:7; filter:drop-shadow(0 5px 10px rgba(80,50,20,.22)); }
+
+/* полоса алфавита (тропинка) */
+#menu .m-path{ position:absolute; left:4%; right:4%; top:14%; height:15%; z-index:6; display:flex; flex-direction:column; justify-content:center; gap:6px; pointer-events:none; }
 #menu .m-path-row{ display:flex; justify-content:space-between; gap:2px; }
 #menu .m-letter{
   flex:0 0 auto; width:min(5.2vw,26px); height:min(5.2vw,26px);
   display:flex; align-items:center; justify-content:center; border-radius:50%;
-  background:rgba(255,250,235,.5);
-  box-shadow:inset 0 1px 2px rgba(255,255,255,.6), 0 1px 2px rgba(90,60,20,.18);
-  font-family:'Fredoka',system-ui,sans-serif; font-weight:600;
-  font-size:min(3vw,15px); color:#9a7a4e; line-height:1;
+  font-family:'Fredoka',system-ui,sans-serif; font-weight:600; font-size:min(3vw,15px); line-height:1;
+  background:rgba(255,250,235,.35); color:#b9a784; opacity:.7;
+  box-shadow:inset 0 1px 2px rgba(255,255,255,.5);
+  transition:transform .2s ease, opacity .2s ease, background .2s ease, color .2s ease;
 }
+#menu .m-letter.lit{ opacity:1; color:#6a4a22; background:rgba(255,248,225,.85); box-shadow:inset 0 1px 2px rgba(255,255,255,.7),0 1px 2px rgba(90,60,20,.18); }
+#menu .m-letter.cur{ opacity:1; color:#37761f; background:#eafbe0; transform:scale(1.18); box-shadow:inset 0 1px 2px #fff,0 2px 7px rgba(55,118,31,.4); }
+
+/* ёжик */
+#menu .m-hog{ position:absolute; left:0; top:0; width:min(12vw,58px); transform:translate(-50%,-104%); z-index:8; pointer-events:none; transition:left .38s ease, top .38s ease; }
+#menu .m-hog-flip{ display:block; }
+#menu .m-hog.face-right .m-hog-flip{ transform:scaleX(-1); }
+#menu .m-hog-img{ display:block; width:100%; height:auto; transform-origin:50% 62%; filter:drop-shadow(0 4px 5px rgba(60,40,15,.3)); -webkit-user-drag:none; }
+#menu .m-hog-img.rolling{ animation:hogRoll .38s linear; }
+@keyframes hogRoll{ from{transform:rotate(0);} to{transform:rotate(360deg);} }
