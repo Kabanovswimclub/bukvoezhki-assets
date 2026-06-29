@@ -182,9 +182,10 @@ body{
 #menu{ overflow:hidden; background:#bfe3f2; -webkit-tap-highlight-color:transparent; user-select:none; }
 
 #menu .m-bg{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:1; }
-#menu .m-grass{ position:absolute; left:0; bottom:0; width:100%; height:auto; z-index:2; }
+#menu .m-grass{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:2; }
 
 #menu .m-card{
+  #menu .m-card{ display:none; } /* временно — карточка вернётся на этапе 3 */
   position:absolute; left:50%; top:60%; transform:translate(-50%,-50%);
   width:min(80vw,360px); z-index:3; cursor:pointer;
 }
