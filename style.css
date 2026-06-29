@@ -182,7 +182,7 @@ body{
 #menu{ overflow:hidden; background:#bfe3f2; -webkit-tap-highlight-color:transparent; user-select:none; }
 
 #menu .m-bg{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:1; }
-#menu .m-grass{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:2; }
+#menu .m-grass{ position:absolute; left:0; width:100%; height:auto; bottom:-39.75vw; z-index:5; }
 
 #menu .m-card{
     position:absolute; left:50%; top:60%; transform:translate(-50%,-50%);
