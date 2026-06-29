@@ -2,7 +2,7 @@
    БУКВОЕЖКИ — данные и конфигурация. Логика — в app.js
    ============================================================ */
 
-const ASSET_BASE='https://cdn.jsdelivr.net/gh/Kabanovswimclub/bukvoezhki-assets@main/';
+const ASSET_BASE='https://kabanovswimclub.github.io/bukvoezhki-assets/';
 function assetURL(p){ return p ? encodeURI(ASSET_BASE+p) : null; }
 
 /* ---------- Пластилиновые буквы (картинки), все 33 ---------- */
