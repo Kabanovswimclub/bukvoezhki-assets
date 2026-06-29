@@ -178,14 +178,14 @@ body{
   #splash .splash-start{transition:none;}
   #splash .splash-start.show{animation:none;}
 }
-/* ===== Меню-лес (#menu) — статика слоёв ===== */
+/* ===== Меню-лес (#menu) — статика + полоса алфавита ===== */
 #menu{ overflow:hidden; background:#bfe3f2; -webkit-tap-highlight-color:transparent; user-select:none; }
 
 #menu .m-bg{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:1; }
 #menu .m-grass{ position:absolute; left:0; bottom:0; width:100%; height:auto; z-index:2; }
 
 #menu .m-card{
-  position:absolute; left:50%; top:48%; transform:translate(-50%,-50%);
+  position:absolute; left:50%; top:60%; transform:translate(-50%,-50%);
   width:min(80vw,360px); z-index:3; cursor:pointer;
 }
 #menu .m-frame{ position:relative; display:block; width:100%; height:auto; }
@@ -195,7 +195,7 @@ body{
   gap:.4em; padding:14% 12%; box-sizing:border-box; text-align:center;
 }
 #menu .m-word-art{ display:flex; align-items:center; justify-content:center; max-height:60%; }
-#menu .m-word-img{ max-width:100%; max-height:34vh; height:auto; object-fit:contain; }
+#menu .m-word-img{ max-width:100%; max-height:30vh; height:auto; object-fit:contain; }
 #menu .m-word-emoji{ font-size:clamp(48px,16vw,96px); line-height:1; }
 #menu .m-word-text{
   font-family:'Fredoka',system-ui,sans-serif; font-weight:700;
@@ -203,10 +203,26 @@ body{
 }
 
 #menu .m-trees{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:4; pointer-events:none; }
-#menu .m-bushes{ position:absolute; left:0; bottom:0; width:100%; height:auto; z-index:5; pointer-events:none; }
 
+/* логотип — правый верхний угол */
 #menu .m-logo{
-  position:absolute; left:50%; top:2.5vh; transform:translateX(-50%);
-  width:auto; max-width:62vw; max-height:14vh; height:auto; z-index:6;
-  filter:drop-shadow(0 6px 12px rgba(80,50,20,.2));
+  position:absolute; top:1.5vh; right:3vw;
+  width:auto; max-width:30vw; max-height:8.5vh; height:auto; z-index:7;
+  filter:drop-shadow(0 5px 10px rgba(80,50,20,.22));
+}
+
+/* полоса алфавита (тропинка) — между логотипом и карточкой, ~15% */
+#menu .m-path{
+  position:absolute; left:4%; right:4%; top:14%; height:15%;
+  z-index:6; display:flex; flex-direction:column; justify-content:center; gap:6px;
+  pointer-events:none;
+}
+#menu .m-path-row{ display:flex; justify-content:space-between; gap:2px; }
+#menu .m-letter{
+  flex:0 0 auto; width:min(5.2vw,26px); height:min(5.2vw,26px);
+  display:flex; align-items:center; justify-content:center; border-radius:50%;
+  background:rgba(255,250,235,.5);
+  box-shadow:inset 0 1px 2px rgba(255,255,255,.6), 0 1px 2px rgba(90,60,20,.18);
+  font-family:'Fredoka',system-ui,sans-serif; font-weight:600;
+  font-size:min(3vw,15px); color:#9a7a4e; line-height:1;
 }
