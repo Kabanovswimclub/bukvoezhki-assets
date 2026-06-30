@@ -279,6 +279,7 @@ function attachDrag(el){
   });
 el.addEventListener('lostpointercapture', ()=>{ if(dragging){ dragging=false; stopLetterLoop(); el.classList.remove('squashing','dragging'); el.style.zIndex=''; restAt(el); scheduleWander(); } });
   el.addEventListener('pointercancel', ()=>{ if(dragging){ dragging=false; stopLetterLoop(); el.classList.remove('squashing','dragging'); el.style.zIndex=''; restAt(el); scheduleWander(); } });
+  function moveTo(x,y){
     const sc=$('#scatter').getBoundingClientRect();
     el.style.left=(x-sc.left-offX)+'px'; el.style.top=(y-sc.top-offY)+'px';
     if(current.mode==='syllables'){
