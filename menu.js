@@ -20,9 +20,14 @@
     hogBall: 'ui/menu/hedgehog_ball.PNG'
   };
 
-  function aurl(p){ if(!p) return ''; return (typeof assetURL==='function') ? assetURL(p)
+function aurl(p){ if(!p) return ''; return (typeof assetURL==='function') ? assetURL(p)
       : ((typeof ASSET_BASE==='string'?ASSET_BASE:'')+p); }
   function nodes(){ return (typeof PATH_NODES!=='undefined' && PATH_NODES) ? PATH_NODES : []; }
+
+  // прелоадим фон меню сразу, пока человек смотрит заставку — переход станет мгновенным
+  (function preloadMenuAssets(){
+    Object.keys(MENU_ASSETS).forEach(function(k){ var im=new Image(); im.src=aurl(MENU_ASSETS[k]); });
+  })();
 
   var built=false, menuEl=null;
   var cur=0, chips=[], hog=null, hogImg=null, hogX=null;
