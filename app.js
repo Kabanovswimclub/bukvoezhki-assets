@@ -431,8 +431,6 @@ function confetti(x,y){
   }
 }
 function confettiAt(sel){ const el=$(sel); if(!el) return; const r=el.getBoundingClientRect(); confetti(r.left+r.width/2, r.top+r.height/2); }
-  }
-}
 
 /* ---------- «Оживление» слова (буквы) ---------- */
 function placedLetters(){ return [...document.querySelectorAll('.letter.placed')]; }
