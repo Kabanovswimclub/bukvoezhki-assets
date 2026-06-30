@@ -98,10 +98,18 @@ function buildPicker(){
 let current=null, slotEls=[], filledCount=0;
 let phase=0, sylBlocks=[], recvSlots=[];
 
+/* Защита от «призрачных» жестов и таймеров прошлого слова:
+   каждая новая партия получает свой номер (gameToken), и все
+   отложенные действия (T) сбрасываются при старте нового слова. */
+let gameToken=0;
+let pendingTimers=[];
+function T(fn,ms){ const id=setTimeout(fn,ms); pendingTimers.push(id); return id; }
+function clearPendingTimers(){ pendingTimers.forEach(clearTimeout); pendingTimers=[]; }
+
 function makeLetterEl(ch,i){
   const fam=familyOf(ch), src=LETTER_IMAGES[ch], cos=COSTUMES[fam];
   const l=document.createElement('div');
-  l.className='letter'+(src?' img':''); l.dataset.letter=ch; l.dataset.fam=fam;
+  l.className='letter'+(src?' img':''); l.dataset.letter=ch; l.dataset.fam=fam; l.dataset.token=String(gameToken);
   const glyph = src?`<img class="glyph" src="${assetURL(src)}" alt="${ch}" draggable="false">`:`<span class="glyph">${ch}</span>`;
   l.innerHTML=`<div class="l-rot">${cos?`<div class="l-costume"><img src="${assetURL(cos)}" alt=""></div>`:''}<div class="l-squash">${glyph}</div></div>`;
   if(!src) l.style.background=`var(--c${(i%6)+1})`;
@@ -109,6 +117,7 @@ function makeLetterEl(ch,i){
 }
 
 function startGame(item){
+  gameToken++; clearPendingTimers();
   current=item; filledCount=0; phase=0;
   $('#picker').classList.add('hidden'); $('#game').classList.remove('hidden');
   $('#reward').className='reward'; $('#reward').innerHTML='';
@@ -261,9 +270,11 @@ function attachDrag(el){
     const r=el.getBoundingClientRect(); offX=e.clientX-r.left; offY=e.clientY-r.top;
     moveTo(e.clientX,e.clientY);
   });
-  el.addEventListener('pointermove', e=>{ if(dragging) moveTo(e.clientX,e.clientY); });
+  el.addEventListener('pointermove', e=>{ if(dragging && el.dataset.token===String(gameToken)) moveTo(e.clientX,e.clientY); });
   el.addEventListener('pointerup', e=>{
-    if(!dragging) return; dragging=false; stopLetterLoop();
+    if(!dragging) return; dragging=false;
+    if(el.dataset.token!==String(gameToken)) return;  // буква из прошлой партии — игнорируем
+    stopLetterLoop();
     el.classList.remove('squashing','dragging'); el.style.zIndex='';
     slotEls.forEach(s=>s.classList.remove('over')); sylBlocks.forEach(b=>b.classList.remove('over'));
     if(current.mode==='syllables'){
@@ -277,7 +288,7 @@ function attachDrag(el){
       if(!slotEls.every(s=>s.dataset.filled==='1')) scheduleWander();
     }
   });
-el.addEventListener('lostpointercapture', ()=>{ if(dragging){ dragging=false; stopLetterLoop(); el.classList.remove('squashing','dragging'); el.style.zIndex=''; restAt(el); scheduleWander(); } });
+  el.addEventListener('lostpointercapture', ()=>{ if(dragging){ dragging=false; stopLetterLoop(); el.classList.remove('squashing','dragging'); el.style.zIndex=''; restAt(el); scheduleWander(); } });
   el.addEventListener('pointercancel', ()=>{ if(dragging){ dragging=false; stopLetterLoop(); el.classList.remove('squashing','dragging'); el.style.zIndex=''; restAt(el); scheduleWander(); } });
   function moveTo(x,y){
     const sc=$('#scatter').getBoundingClientRect();
@@ -306,8 +317,8 @@ function placeInSlot(el,slot){
   el.classList.add('placed');
   playPhoneme(el.dataset.letter);
   sparkle(r.left+r.width/2, r.top+r.height/2);
-filledCount++;
-  if(slotEls.every(s=>s.dataset.filled==='1')) setTimeout(playWordAnim,250);
+  filledCount++;
+  if(slotEls.every(s=>s.dataset.filled==='1')) T(playWordAnim,250);
 }
 
 /* ---------- Слоги: буква в блок ---------- */
@@ -337,7 +348,7 @@ function syllableReady(block){
   block.dataset.ready='1'; block.classList.add('ready');
   block.style.animation='sylpop .5s ease'; setTimeout(()=>{ block.style.animation=''; },520);
   attachSyllableDrag(block);
-  if(allBlocksReady()) setTimeout(startPhase2,600);
+  if(allBlocksReady()) T(startPhase2,600);
 }
 function startPhase2(){
   phase=2; kickIdle();
@@ -381,14 +392,14 @@ function attachSyllableDrag(block){
   block.addEventListener('pointerup', e=>{
     if(!dragging) return; dragging=false; block.style.zIndex='';
     if(!moved){ stopSylLoop(); return; }      // был только звук-удержание
-   block.classList.remove('dragging'); stopSylLoop();
+    block.classList.remove('dragging'); stopSylLoop();
     const rs=recvUnder(e.clientX,e.clientY,block.dataset.syl); recvSlots.forEach(s=>s.classList.remove('over'));
     if(rs) placeBlockInRecv(block,rs); else returnBlock(block,homeL,homeT);
   });
- block.addEventListener('lostpointercapture', ()=>{ if(dragging){ dragging=false; stopSylLoop(); if(moved) returnBlock(block,homeL,homeT); } });
+  block.addEventListener('lostpointercapture', ()=>{ if(dragging){ dragging=false; stopSylLoop(); if(moved) returnBlock(block,homeL,homeT); } });
   block.addEventListener('pointercancel', ()=>{ if(dragging){ dragging=false; stopSylLoop(); if(moved) returnBlock(block,homeL,homeT); } });
 }
-function returnBlock(block,L,T){ block.style.transition='left .22s ease, top .22s ease'; block.style.left=L+'px'; block.style.top=T+'px'; }
+function returnBlock(block,L,T2){ block.style.transition='left .22s ease, top .22s ease'; block.style.left=L+'px'; block.style.top=T2+'px'; }
 function placeBlockInRecv(block,slot){
   const lay=$('#sylLayer').getBoundingClientRect(), r=slot.getBoundingClientRect(), b=block.getBoundingClientRect();
   block.style.transition='left .15s ease, top .15s ease';
@@ -397,15 +408,15 @@ function placeBlockInRecv(block,slot){
   block.dataset.placed='1'; block.classList.add('placed');
   slot.dataset.filled='1'; slot.classList.add('filled'); slot.textContent='';
   sparkle(r.left+r.width/2, r.top+r.height/2);
-  if(recvSlots.every(s=>s.dataset.filled==='1')) setTimeout(wordCompleteSyll,350);
+  if(recvSlots.every(s=>s.dataset.filled==='1')) T(wordCompleteSyll,350);
 }
 function wordCompleteSyll(){
   kickIdle(); showArrows();                    // стрелки сразу
   confettiAt('#receiver');
   showRewardObject(); playWord(current);
   const o=current.object||{}, hold=(o.image||o.video)?5000:2200;
-  setTimeout(hideRewardObject, hold);
-  setTimeout(()=>{ showWordHoldOver($('#receiver')); }, hold+650);
+  T(hideRewardObject, hold);
+  T(()=>{ showWordHoldOver($('#receiver')); }, hold+650);
 }
 
 function sparkle(x,y){
@@ -472,17 +483,17 @@ function reformLetters(){
 function playWordAnim(){
   kickIdle(); showArrows();                     // стрелки сразу
   const letters=placedLetters();
-  letters.forEach((el,i)=> setTimeout(()=>{
+  letters.forEach((el,i)=> T(()=>{
     const r=rotEl(el); r.style.transition='transform .3s cubic-bezier(.2,1.5,.4,1)';
     r.style.transform='translateY(-16px) scale(1.12)'; setTimeout(()=> r.style.transform='translateY(0) scale(1)', 300);
   }, i*90));
   const jumpDone=letters.length*90+360;
-  setTimeout(spreadLetters, jumpDone);
+  T(spreadLetters, jumpDone);
   const objAt=jumpDone+460;
-  setTimeout(()=>{ confettiAt('#slots'); showRewardObject(); playWord(current); }, objAt);
+  T(()=>{ confettiAt('#slots'); showRewardObject(); playWord(current); }, objAt);
   const o=current.object||{}, hold=(o.image||o.video)?5000:2200, holdEnd=objAt+hold;
-  setTimeout(()=>{ hideRewardObject(); reformLetters(); }, holdEnd);
-  setTimeout(()=>{ showWordHoldOver($('#slots')); }, holdEnd+650);
+  T(()=>{ hideRewardObject(); reformLetters(); }, holdEnd);
+  T(()=>{ showWordHoldOver($('#slots')); }, holdEnd+650);
 }
 
 /* ---------- Удержание собранного слова ---------- */
