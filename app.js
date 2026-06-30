@@ -274,11 +274,11 @@ function attachDrag(el){
       const slot=slotUnder(e.clientX,e.clientY);
       if(slot && slot.dataset.filled==='0' && slot.dataset.letter===el.dataset.letter){ placeInSlot(el,slot); }
       else { restAt(el); }
-      if(filledCount<current.word.length) scheduleWander();
+      if(!slotEls.every(s=>s.dataset.filled==='1')) scheduleWander();
     }
   });
-  el.addEventListener('lostpointercapture', ()=>{ if(dragging){ dragging=false; stopLetterLoop(); el.classList.remove('squashing','dragging'); el.style.zIndex=''; restAt(el); scheduleWander(); } });
-  function moveTo(x,y){
+el.addEventListener('lostpointercapture', ()=>{ if(dragging){ dragging=false; stopLetterLoop(); el.classList.remove('squashing','dragging'); el.style.zIndex=''; restAt(el); scheduleWander(); } });
+  el.addEventListener('pointercancel', ()=>{ if(dragging){ dragging=false; stopLetterLoop(); el.classList.remove('squashing','dragging'); el.style.zIndex=''; restAt(el); scheduleWander(); } });
     const sc=$('#scatter').getBoundingClientRect();
     el.style.left=(x-sc.left-offX)+'px'; el.style.top=(y-sc.top-offY)+'px';
     if(current.mode==='syllables'){
@@ -305,8 +305,8 @@ function placeInSlot(el,slot){
   el.classList.add('placed');
   playPhoneme(el.dataset.letter);
   sparkle(r.left+r.width/2, r.top+r.height/2);
-  filledCount++;
-  if(filledCount===current.word.length) setTimeout(playWordAnim,250);
+filledCount++;
+  if(slotEls.every(s=>s.dataset.filled==='1')) setTimeout(playWordAnim,250);
 }
 
 /* ---------- Слоги: буква в блок ---------- */
@@ -384,7 +384,8 @@ function attachSyllableDrag(block){
     const rs=recvUnder(e.clientX,e.clientY,block.dataset.syl); recvSlots.forEach(s=>s.classList.remove('over'));
     if(rs) placeBlockInRecv(block,rs); else returnBlock(block,homeL,homeT);
   });
-  block.addEventListener('lostpointercapture', ()=>{ if(dragging){ dragging=false; stopSylLoop(); if(moved) returnBlock(block,homeL,homeT); } });
+ block.addEventListener('lostpointercapture', ()=>{ if(dragging){ dragging=false; stopSylLoop(); if(moved) returnBlock(block,homeL,homeT); } });
+  block.addEventListener('pointercancel', ()=>{ if(dragging){ dragging=false; stopSylLoop(); if(moved) returnBlock(block,homeL,homeT); } });
 }
 function returnBlock(block,L,T){ block.style.transition='left .22s ease, top .22s ease'; block.style.left=L+'px'; block.style.top=T+'px'; }
 function placeBlockInRecv(block,slot){
