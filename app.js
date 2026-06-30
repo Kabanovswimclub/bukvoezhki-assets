@@ -58,6 +58,10 @@ function startSylLoop(syl){ stopSylLoop(); const f=current.syllableAudio&&curren
   if(f){ const a=getAudio(assetURL(f)); a.loop=true; a.currentTime=0; a.play().catch(()=>{}); heldSyl=a; } }
 function stopSylLoop(){ if(heldSyl){ heldSyl.pause(); heldSyl.loop=false; heldSyl=null; } }
 
+/* настоящая фонема буквы — разово, в момент установки в слот/ячейку */
+function playPhoneme(ch){ const f=LETTER_PHONEMES[ch];
+  if(f){ const a=getAudio(assetURL(f)); a.loop=false; a.currentTime=0; a.play().catch(()=>{}); } }
+
 /* ---------- Утилиты ---------- */
 const $=s=>document.querySelector(s);
 function rand(a,b){ return a+Math.random()*(b-a); }
@@ -299,6 +303,7 @@ function placeInSlot(el,slot){
   const c=costumeEl(el); if(c) c.classList.remove('show');
   slot.dataset.filled='1'; slot.classList.add('filled'); slot.textContent='';
   el.classList.add('placed');
+  playPhoneme(el.dataset.letter);
   sparkle(r.left+r.width/2, r.top+r.height/2);
   filledCount++;
   if(filledCount===current.word.length) setTimeout(playWordAnim,250);
@@ -323,6 +328,7 @@ function placeLetterInBlock(el,block){
   const rr=rotEl(el); rr.style.transition=''; rr.style.transform='rotate(0deg)';
   const c=costumeEl(el); if(c) c.classList.remove('show');
   cell.textContent=''; cell.appendChild(el); cell.dataset.filled='1';   // буква теперь внутри блока
+  playPhoneme(ch);
   if([...block.querySelectorAll('.syl-cell')].every(c=>c.dataset.filled==='1')) syllableReady(block);
 }
 function allBlocksReady(){ return sylBlocks.length>0 && sylBlocks.every(b=>b.dataset.ready==='1'); }
@@ -364,7 +370,7 @@ function attachSyllableDrag(block){
   });
   block.addEventListener('pointermove', e=>{
     if(!dragging) return;
-    if(!moved && Math.hypot(e.clientX-startX,e.clientY-startY)>8){ moved=true; stopSylLoop(); block.classList.add('dragging'); }
+    if(!moved && Math.hypot(e.clientX-startX,e.clientY-startY)>8){ moved=true; block.classList.add('dragging'); }
     if(moved){
       const lay=$('#sylLayer').getBoundingClientRect();
       block.style.left=(e.clientX-lay.left-offX)+'px'; block.style.top=(e.clientY-lay.top-offY)+'px';
@@ -374,7 +380,7 @@ function attachSyllableDrag(block){
   block.addEventListener('pointerup', e=>{
     if(!dragging) return; dragging=false; block.style.zIndex='';
     if(!moved){ stopSylLoop(); return; }      // был только звук-удержание
-    block.classList.remove('dragging');
+   block.classList.remove('dragging'); stopSylLoop();
     const rs=recvUnder(e.clientX,e.clientY,block.dataset.syl); recvSlots.forEach(s=>s.classList.remove('over'));
     if(rs) placeBlockInRecv(block,rs); else returnBlock(block,homeL,homeT);
   });
@@ -393,6 +399,7 @@ function placeBlockInRecv(block,slot){
 }
 function wordCompleteSyll(){
   kickIdle(); showArrows();                    // стрелки сразу
+  confettiAt('#receiver');
   showRewardObject(); playWord(current);
   const o=current.object||{}, hold=(o.image||o.video)?5000:2200;
   setTimeout(hideRewardObject, hold);
@@ -407,6 +414,23 @@ function sparkle(x,y){
     sp.style.setProperty('--dx',(Math.random()*120-60)+'px');
     sp.style.setProperty('--dy',(-40-Math.random()*70)+'px');
     document.body.appendChild(sp); setTimeout(()=>sp.remove(),900);
+  }
+}
+
+/* конфетти — на сборку слова и предложения */
+function confetti(x,y){
+  const cols=['var(--c1)','var(--c2)','var(--c3)','var(--c4)','var(--c5)','var(--c6)'];
+  for(let i=0;i<30;i++){
+    const p=document.createElement('div'); p.className='confetti-piece';
+    p.style.left=x+'px'; p.style.top=y+'px'; p.style.background=cols[i%cols.length];
+    p.style.setProperty('--dx',(Math.random()*360-180)+'px');
+    p.style.setProperty('--dy',(120+Math.random()*230)+'px');
+    p.style.setProperty('--rot',(Math.random()*720-360)+'deg');
+    p.style.animationDelay=(Math.random()*0.09).toFixed(2)+'s';
+    document.body.appendChild(p); setTimeout(()=>p.remove(),1400);
+  }
+}
+function confettiAt(sel){ const el=$(sel); if(!el) return; const r=el.getBoundingClientRect(); confetti(r.left+r.width/2, r.top+r.height/2); }
   }
 }
 
@@ -455,7 +479,7 @@ function playWordAnim(){
   const jumpDone=letters.length*90+360;
   setTimeout(spreadLetters, jumpDone);
   const objAt=jumpDone+460;
-  setTimeout(()=>{ showRewardObject(); playWord(current); }, objAt);
+  setTimeout(()=>{ confettiAt('#slots'); showRewardObject(); playWord(current); }, objAt);
   const o=current.object||{}, hold=(o.image||o.video)?5000:2200, holdEnd=objAt+hold;
   setTimeout(()=>{ hideRewardObject(); reformLetters(); }, holdEnd);
   setTimeout(()=>{ showWordHoldOver($('#slots')); }, holdEnd+650);
