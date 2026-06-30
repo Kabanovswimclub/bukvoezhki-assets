@@ -178,7 +178,7 @@
     menuEl.addEventListener('pointermove',function(e){ if(Math.abs(e.clientX-sx)>8||Math.abs(e.clientY-sy)>8) moved=true; });
     menuEl.addEventListener('pointerup',function(e){
       var dx=e.clientX-sx, dy=e.clientY-sy;
-      if(Math.abs(dy)>40 && Math.abs(dy)>Math.abs(dx)){ goTo(cur+(dy<0?1:-1)); return; }  // свайп
+      if(Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)){ goTo(cur+(dx<0?1:-1)); return; }  // свайп влево/вправо
       if(!moved){
         var card=document.getElementById('mCard');
         if(card && downT && card.contains(downT)){
