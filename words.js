@@ -1,7 +1,7 @@
 /* ============================================================
    БУКВОЕЖКИ — данные и конфигурация. Логика — в app.js
    ============================================================ */
-const ASSET_BASE='https://kabanovswimclub.github.io/bukvoezhki-assets/';
+const ASSET_BASE='./';
 function assetURL(p){ return p ? encodeURI(ASSET_BASE+p) : null; }
 
 /* ---------- Пластилиновые буквы (картинки), все 33 ---------- */
@@ -97,3 +97,5 @@ const PATH_NODES='АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭ
 /* Плоский список слов — на случай, если app.js его использует */
 const WORDS=[];
 PATH_NODES.forEach(function(n){ n.words.forEach(function(w){ WORDS.push(w); }); });
+const AIST=WORDS.find(w=>w.id==='аист');
+if(AIST){ AIST.sentence='Аист высоко летит'; AIST.audio.sentence='sentences_voice/Аист_высоко_летит.mp3'; }

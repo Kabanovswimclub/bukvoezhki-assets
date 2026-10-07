@@ -30,7 +30,7 @@ function aurl(p){ if(!p) return ''; return (typeof assetURL==='function') ? asse
   })();
 
   var built=false, menuEl=null;
-  var cur=0, chips=[], hog=null, hogImg=null, hogX=null;
+  var cur=0, chips=[], hog=null, hogImg=null, hogX=null, cards=[], cardTimer=null, animating=false;
   var settleTimer=null, curAudio=null, wheelLock=0;
 
   /* ---- разметка тропинки: 2 ряда змейкой (2-й справа налево) ---- */
@@ -50,8 +50,9 @@ function aurl(p){ if(!p) return ''; return (typeof assetURL==='function') ? asse
     menuEl.innerHTML=
       '<img class="m-bg" alt="">'+
       '<img class="m-grass" alt="">'+
-      '<div class="m-card" id="mCard"><img class="m-frame" alt="">'+
-        '<div class="m-card-content" id="mCardContent"></div></div>'+
+      '<div class="m-card" data-pos="-1"><img class="m-frame" alt=""><div class="m-card-content"></div></div>'+
+      '<div class="m-card" data-pos="0" id="mCard"><img class="m-frame" alt=""><div class="m-card-content"></div></div>'+
+      '<div class="m-card" data-pos="1"><img class="m-frame" alt=""><div class="m-card-content"></div></div>'+
       '<img class="m-trees" alt="">'+
       pathHTML()+
       '<img class="m-logo" alt="Буквоежки">'+
@@ -61,7 +62,8 @@ function aurl(p){ if(!p) return ''; return (typeof assetURL==='function') ? asse
     menuEl.querySelector('.m-bg').src    = aurl(MENU_ASSETS.bg);
     menuEl.querySelector('.m-grass').src = aurl(MENU_ASSETS.grass);
     menuEl.querySelector('.m-trees').src = aurl(MENU_ASSETS.trees);
-    menuEl.querySelector('.m-frame').src = aurl(MENU_ASSETS.frame);
+    cards=[...menuEl.querySelectorAll('.m-card')];
+    cards.forEach(card=>{ card.querySelector('.m-frame').src=aurl(MENU_ASSETS.frame); });
     menuEl.querySelector('.m-logo').src  = aurl(MENU_ASSETS.logo);
 
     chips=[];
@@ -72,15 +74,17 @@ function aurl(p){ if(!p) return ''; return (typeof assetURL==='function') ? asse
     built=true;
 
     cur=0; hogX=null;
-    fillCard(nodes()[0],'next');
+    fillCards();
     updateLighting();
     placeHog(0,false);
     scheduleSettle();
   }
 
   /* ---- карточка: слово из буквенных PNG / для знака — одна буква ---- */
-  function fillCard(node,dir){
-    var c=document.getElementById('mCardContent'); if(!c||!node) return;
+  function fillCard(card,node){
+    var c=card.querySelector('.m-card-content'); if(!c) return;
+    if(!node){ c.innerHTML=''; card.style.visibility='hidden'; return; }
+    card.style.visibility='visible';
     var html;
     if(node.sign){
       html='<div class="m-sign"><img src="'+aurl(LETTER_IMAGES[node.letter])+'" alt=""></div>';
@@ -91,18 +95,32 @@ function aurl(p){ if(!p) return ''; return (typeof assetURL==='function') ? asse
         return s?'<img src="'+aurl(s)+'" alt="">':''; }).join('')+'</div>';
     }
     c.innerHTML=html;
-    c.classList.remove('in-up','in-down'); void c.offsetWidth;
-    c.classList.add(dir==='prev'?'in-down':'in-up');
+    card.dataset.index=String(nodes().indexOf(node));
+  }
+
+  function cardSpacing(){ return Math.min(menuEl.clientWidth*.8,360)*.86; }
+  function positionCard(card,pos,drag){
+    var scale=pos===0?1:.82;
+    card.style.transform='translate(-50%,-50%) translateX('+(pos*cardSpacing()+drag)+'px) scale('+scale+')';
+    card.style.opacity=Math.abs(pos)>1.5?'0':(pos===0?'1':'.72');
+    card.style.zIndex=pos===0?'3':'2';
+    card.style.pointerEvents=Math.abs(pos)>1.5?'none':'auto';
+  }
+  function fillCards(){
+    cards.forEach(function(card,i){ var pos=i-1; fillCard(card,nodes()[cur+pos]); card.style.transition='none'; positionCard(card,pos,0); });
     sizeLetters();
+    requestAnimationFrame(function(){ cards.forEach(function(card){card.style.transition='';}); });
   }
 
   // подгоняем плитки-буквы под ширину карточки (длинные слова — мельче)
   function sizeLetters(){
-    var row=document.querySelector('#mCardContent .m-word-letters'); if(!row) return;
-    var n=row.children.length; if(!n) return;
-    var avail=row.clientWidth || (menuEl?menuEl.clientWidth*0.6:200);
-    var gap=4, tile=Math.min((avail-(n-1)*gap)/n, 52);
-    for(var i=0;i<n;i++) row.children[i].style.width=tile+'px';
+    cards.forEach(function(card){
+      var row=card.querySelector('.m-word-letters'); if(!row) return;
+      var n=row.children.length; if(!n) return;
+      var avail=row.clientWidth || (menuEl?menuEl.clientWidth*0.6:200);
+      var gap=4, tile=Math.min((avail-(n-1)*gap)/n, 52);
+      for(var i=0;i<n;i++) row.children[i].style.width=tile+'px';
+    });
   }
 
   function updateLighting(){
@@ -166,32 +184,58 @@ function aurl(p){ if(!p) return ''; return (typeof assetURL==='function') ? asse
   function goTo(i){
     var max=nodes().length-1;
     i=Math.max(0,Math.min(max,i));
-    if(i===cur) return;
-    var dir=i>cur?'next':'prev';
-    cur=i; stopAudio();
-    fillCard(nodes()[i],dir);
+    if(i===cur||animating) return;
+    var dir=i>cur?1:-1;
+    if(Math.abs(i-cur)>1){ cur=i; stopAudio(); fillCards(); updateLighting(); placeHog(i,true); scheduleSettle(); return; }
+    animating=true; stopAudio();
+    cards.forEach(function(card,j){ positionCard(card,j-1-dir,0); });
+    cur=i;
     updateLighting();
     placeHog(i,true);
     scheduleSettle();
+    clearTimeout(cardTimer);
+    cardTimer=setTimeout(function(){ fillCards(); animating=false; },390);
   }
 
   function menuVisible(){ return menuEl && !menuEl.classList.contains('hidden'); }
 
   function bindInput(){
-    var sx=0,sy=0,moved=false,downT=null;
-    menuEl.addEventListener('pointerdown',function(e){ sx=e.clientX;sy=e.clientY;moved=false;downT=e.target; });
-    menuEl.addEventListener('pointermove',function(e){ if(Math.abs(e.clientX-sx)>8||Math.abs(e.clientY-sy)>8) moved=true; });
+    var sx=0,sy=0,moved=false,downT=null,dragging=false,activePointer=null;
+    menuEl.addEventListener('pointerdown',function(e){
+      if(e.pointerType==='mouse'&&e.button!==0) return;
+      activePointer=e.pointerId; sx=e.clientX;sy=e.clientY;moved=false;downT=e.target;
+      menuEl.setPointerCapture(e.pointerId);
+    });
+    menuEl.addEventListener('pointermove',function(e){
+      if(activePointer!==e.pointerId) return;
+      var dx=e.clientX-sx,dy=e.clientY-sy;
+      if(Math.abs(dx)>8||Math.abs(dy)>8) moved=true;
+      if(animating||Math.abs(dx)<8||Math.abs(dx)<Math.abs(dy)) return;
+      dragging=true;
+      cards.forEach(function(card,j){card.style.transition='none'; positionCard(card,j-1,Math.max(-cardSpacing(),Math.min(cardSpacing(),dx*.65)));});
+    });
     menuEl.addEventListener('pointerup',function(e){
+      if(activePointer!==e.pointerId) return;
+      activePointer=null;
       var dx=e.clientX-sx, dy=e.clientY-sy;
-      if(Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)){ goTo(cur+(dx<0?1:-1)); return; }  // свайп влево/вправо
+      if(dragging){ dragging=false; cards.forEach(function(card){card.style.transition='';}); }
+      if(Math.abs(dx)>55 && Math.abs(dx)>Math.abs(dy)){ goTo(cur+(dx<0?1:-1)); return; }
+      cards.forEach(function(card,j){positionCard(card,j-1,0);});
       if(!moved){
-        var card=document.getElementById('mCard');
-        if(card && downT && card.contains(downT)){
-          var node=nodes()[cur];
+        var card=downT&&downT.closest('.m-card');
+        if(card){
+          var index=parseInt(card.dataset.index,10);
+          if(index!==cur){goTo(index);return;}
+          var node=nodes()[index];
           if(node && !node.sign && node.words[0] && typeof startGame==='function') startGame(node.words[0]);
           /* знак Ъ/Ь/Ы: механика будет в отдельном чате — здесь хук */
         }
       }
+    });
+    menuEl.addEventListener('pointercancel',function(e){
+      if(activePointer!==e.pointerId) return;
+      activePointer=null; dragging=false;
+      cards.forEach(function(card,j){card.style.transition='';positionCard(card,j-1,0);});
     });
     menuEl.addEventListener('wheel',function(e){
       var now=Date.now(); if(now-wheelLock<420||Math.abs(e.deltaY)<4) return;
@@ -199,6 +243,7 @@ function aurl(p){ if(!p) return ''; return (typeof assetURL==='function') ? asse
     },{passive:true});
     window.addEventListener('resize',function(){
       if(!built||!menuVisible()) return;
+      cards.forEach(function(card,j){card.style.transition='none';positionCard(card,j-1,0);});
       sizeLetters();
       var c=chipCenter(cur); if(!hog) return;
       hog.style.transition='none'; hog.style.left=c.x+'px'; hog.style.top=c.y+'px'; hogX=c.x;

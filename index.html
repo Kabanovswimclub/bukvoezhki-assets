@@ -3,7 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#bfe3f2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Буквоежка</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@700;800;900&display=swap&subset=cyrillic,cyrillic-ext,latin" rel="stylesheet">
@@ -41,6 +46,13 @@
     <div class="receiver hidden" id="receiver"></div>
     <div class="scatter" id="scatter"></div>
     <div class="wordhold hidden" id="wordHold"></div>
+    <div class="sentence-lesson hidden" id="sentenceLesson" aria-label="Составь предложение">
+      <div class="sentence-hint">Помоги слову найти своё место</div>
+      <div class="sentence-line"><span class="sentence-gap" id="sentenceGap">АИСТ</span><span>ВЫСОКО</span><span>ЛЕТИТ</span></div>
+      <div class="sentence-bird" id="sentenceBird" aria-hidden="true">🐦</div>
+      <button class="sentence-tile" id="sentenceTile" type="button">АИСТ</button>
+      <div class="sentence-help">Перетащи слово в начало предложения</div>
+    </div>
     <button class="arrow arrow-left hidden" id="btnPrev" title="Предыдущее слово">◀</button>
     <button class="arrow arrow-right hidden" id="btnNext" title="Следующее слово">▶</button>
   </div>
@@ -50,5 +62,10 @@
 <script src="app.js"></script>
 <script src="splash.js"></script>
 <script src="menu.js"></script>
+<script>
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
+</script>
 </body>
 </html>

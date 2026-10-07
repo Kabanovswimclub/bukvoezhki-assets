@@ -57,6 +57,10 @@ let heldSyl=null;
 function startSylLoop(syl){ stopSylLoop(); const f=current.syllableAudio&&current.syllableAudio[syl];
   if(f){ const a=getAudio(assetURL(f)); a.loop=true; a.currentTime=0; a.play().catch(()=>{}); heldSyl=a; } }
 function stopSylLoop(){ if(heldSyl){ heldSyl.pause(); heldSyl.loop=false; heldSyl=null; } }
+function playSyllable(syl){
+  const f=current.syllableAudio&&current.syllableAudio[syl];
+  if(f){ const a=getAudio(assetURL(f)); a.loop=false; a.currentTime=0; a.play().catch(()=>{}); }
+}
 
 /* настоящая фонема буквы — разово, в момент установки в слот/ячейку */
 function playPhoneme(ch){ const f=LETTER_PHONEMES[ch];
@@ -119,6 +123,7 @@ function makeLetterEl(ch,i){
 function startGame(item){
   gameToken++; clearPendingTimers();
   current=item; filledCount=0; phase=0;
+  resetSentenceLesson();
   $('#picker').classList.add('hidden'); $('#game').classList.remove('hidden');
   $('#reward').className='reward'; $('#reward').innerHTML='';
   hideArrows(); hideWordHold();
@@ -347,6 +352,7 @@ function allBlocksReady(){ return sylBlocks.length>0 && sylBlocks.every(b=>b.dat
 function syllableReady(block){
   block.dataset.ready='1'; block.classList.add('ready');
   block.style.animation='sylpop .5s ease'; setTimeout(()=>{ block.style.animation=''; },520);
+  T(()=>playSyllable(block.dataset.syl),320);
   attachSyllableDrag(block);
   if(allBlocksReady()) T(startPhase2,600);
 }
@@ -411,12 +417,54 @@ function placeBlockInRecv(block,slot){
   if(recvSlots.every(s=>s.dataset.filled==='1')) T(wordCompleteSyll,350);
 }
 function wordCompleteSyll(){
-  kickIdle(); showArrows();                    // стрелки сразу
+  kickIdle(); if(current.id!=='аист') showArrows();
   confettiAt('#receiver');
   showRewardObject(); playWord(current);
   const o=current.object||{}, hold=(o.image||o.video)?5000:2200;
   T(hideRewardObject, hold);
-  T(()=>{ showWordHoldOver($('#receiver')); }, hold+650);
+  T(()=>{ if(current.id==='аист') showSentenceLesson(); else showWordHoldOver($('#receiver')); }, hold+650);
+}
+
+/* Первый полный урок: собранное слово становится частью предложения. */
+let sentenceDone=false;
+function resetSentenceLesson(){
+  const lesson=$('#sentenceLesson'), tile=$('#sentenceTile'), gap=$('#sentenceGap');
+  if(!lesson) return;
+  lesson.classList.add('hidden'); lesson.classList.remove('complete','flying');
+  tile.classList.remove('placed','dragging'); tile.style.transform='';
+  gap.classList.remove('filled'); gap.textContent='АИСТ'; sentenceDone=false;
+}
+function showSentenceLesson(){
+  hideWordHold(); $('#sentenceLesson').classList.remove('hidden');
+  const tile=$('#sentenceTile'); tile.focus({preventScroll:true});
+}
+function completeSentence(){
+  if(sentenceDone) return;
+  sentenceDone=true;
+  const lesson=$('#sentenceLesson');
+  $('#sentenceTile').classList.add('placed');
+  $('#sentenceGap').classList.add('filled');
+  lesson.classList.add('complete');
+  playSentence(current);
+  T(()=>{ lesson.classList.add('flying'); confettiAt('#sentenceGap'); showArrows(); },1100);
+}
+function playSentence(item){
+  const f=item.audio&&item.audio.sentence;
+  if(f){ const a=getAudio(assetURL(f)); a.currentTime=0; a.play().catch(()=>speak(item.sentence,0.85)); }
+  else if(item.sentence) speak(item.sentence,0.85);
+}
+function bindSentenceLesson(){
+  const tile=$('#sentenceTile'), gap=$('#sentenceGap'); let dragging=false,sx=0,sy=0;
+  tile.addEventListener('pointerdown',e=>{ if(sentenceDone) return; dragging=true; sx=e.clientX; sy=e.clientY; tile.setPointerCapture(e.pointerId); tile.classList.add('dragging'); });
+  tile.addEventListener('pointermove',e=>{ if(dragging) tile.style.transform=`translate(${e.clientX-sx}px,${e.clientY-sy}px)`; });
+  tile.addEventListener('pointerup',e=>{
+    if(!dragging) return; dragging=false; tile.classList.remove('dragging');
+    const r=gap.getBoundingClientRect();
+    if(e.clientX>=r.left-25&&e.clientX<=r.right+25&&e.clientY>=r.top-25&&e.clientY<=r.bottom+25) completeSentence();
+    tile.style.transform='';
+  });
+  tile.addEventListener('pointercancel',()=>{dragging=false;tile.classList.remove('dragging');tile.style.transform='';});
+  tile.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ')&&!sentenceDone){ e.preventDefault(); completeSentence(); } });
 }
 
 function sparkle(x,y){
@@ -513,10 +561,11 @@ function bindWordHold(){
 /* ---------- Кнопки ---------- */
 function onTap(sel, fn){ $(sel).addEventListener('pointerup', e=>{ e.preventDefault(); fn(e); }); }
 function gotoWord(delta){ const i=WORDS.findIndex(w=>w.id===current.id); const n=(i+delta+WORDS.length)%WORDS.length; startGame(WORDS[n]); }
-onTap('#btnReplay', ()=>current&&playWord(current));
-onTap('#btnHome', ()=>{ stopLetterLoop(); stopWordLoop(); stopSylLoop(); kickIdle(); hideWordHold(); $('#game').classList.add('hidden'); showMenu(); });
+onTap('#btnReplay', ()=>{ if(!current) return; if(sentenceDone&&!$('#sentenceLesson').classList.contains('hidden')) playSentence(current); else playWord(current); });
+onTap('#btnHome', ()=>{ clearPendingTimers(); resetSentenceLesson(); stopLetterLoop(); stopWordLoop(); stopSylLoop(); kickIdle(); hideWordHold(); $('#game').classList.add('hidden'); showMenu(); });
 onTap('#btnPrev', ()=>gotoWord(-1));
 onTap('#btnNext', ()=>gotoWord(1));
 
 bindWordHold();
+bindSentenceLesson();
 buildPicker();
