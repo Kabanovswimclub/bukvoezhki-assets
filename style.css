@@ -243,3 +243,77 @@ body{
 #menu .m-hog-img{ display:block; width:100%; height:auto; transform-origin:50% 62%; filter:drop-shadow(0 4px 5px rgba(60,40,15,.3)); -webkit-user-drag:none; }
 #menu .m-hog-img.rolling{ animation:hogRoll .38s linear; }
 @keyframes hogRoll{ from{transform:rotate(0);} to{transform:rotate(360deg);} }
+
+/* Первый пластилиновый проход: фон, карточка и текст остаются разными слоями. */
+#menu .m-grass,#menu .m-trees,#menu .m-logo{display:none;}
+#menu .m-card{
+  top:59%; width:min(32vw,340px); aspect-ratio:1.05;
+  border:clamp(8px,1vw,15px) solid #ead1af; border-radius:8%;
+  background:linear-gradient(155deg,#6cb2da 0%,#94d1e8 56%,#d3e6c7 100%);
+  box-shadow:inset 0 0 0 3px #fff0d0,0 11px 0 #ba936f,0 24px 28px #523d3160;
+}
+#menu .m-card::before{content:"";position:absolute;inset:-2px;border-radius:inherit;pointer-events:none;box-shadow:inset 0 8px 10px #fff7df77,inset 0 -8px 12px #87654938;z-index:1;}
+#menu .m-frame{display:none;}
+#menu .m-card-content{inset:0;padding:4% 6% 5%;flex-direction:column;justify-content:space-between;}
+#menu .m-story-art{display:block;width:100%;height:74%;object-fit:contain;filter:drop-shadow(0 8px 6px #3d544666);pointer-events:none;}
+#menu .m-story-word{width:100%;border-radius:18px;background:#f4dabb;color:#78472f;text-align:center;font-family:'Fredoka','Nunito',sans-serif;font-size:clamp(27px,5vw,52px);font-weight:700;line-height:1.18;letter-spacing:.08em;text-shadow:0 2px #fff2d0;box-shadow:inset 0 3px #fff2d5,0 5px 0 #cfae89;}
+#menu .m-word-letters{height:100%;}
+#menu .m-path{top:2%;height:17%;left:2%;right:2%;gap:4px;}
+#menu .m-letter{width:clamp(16px,2.75vw,30px);height:clamp(16px,2.75vw,30px);border-radius:25%;font-size:clamp(10px,1.4vw,17px);background:#e9d5b4;color:#7d6349;opacity:.9;box-shadow:inset 0 2px #fff1d9,0 3px 0 #b89470;}
+#menu .m-letter.lit{background:#f2dfbf;color:#725239;}
+#menu .m-letter.cur{background:#f2ddbd;color:#b83f2d;box-shadow:inset 0 2px #fff6da,0 3px 0 #a67758,0 0 0 3px #f7e9ca;}
+#menu .m-hog{width:clamp(22px,4vw,52px);}
+
+#game.clay-aist{padding:0;background:#8dc1dd;box-shadow:none;}
+#game.clay-aist .topbar{position:absolute;top:8px;left:10px;right:10px;z-index:12;pointer-events:none;}
+#game.clay-aist .topbar button{pointer-events:auto;}
+#game.clay-aist .stage{width:100%;height:100%;flex:1;background:url('assets/clay/meadow-bg.png') center center/cover no-repeat;}
+#game.clay-aist .stage::before{content:"";position:absolute;right:2%;top:12%;width:clamp(95px,18vw,250px);height:38%;background:url('assets/clay/stork-nest.png') center/contain no-repeat;z-index:1;pointer-events:none;filter:drop-shadow(0 8px 8px #3c563c55);}
+#game.clay-aist .syl-block,#game.clay-aist .receiver,#game.clay-aist .slots{filter:drop-shadow(0 8px 6px #5d463b44);}
+#game.clay-aist .syl-block{background:#ebd2ae;border:4px solid #f9e7c7;box-shadow:inset 0 -5px #c49b77,0 6px 0 #a78363;}
+#game.clay-aist .syl-cell,#game.clay-aist .recv-slot,#game.clay-aist .slot{background:#f8e8cc;border:3px dashed #b68d6c;color:#ba977b;box-shadow:inset 0 5px 9px #a9755144;}
+#game.clay-aist .syl-cell.filled,#game.clay-aist .recv-slot.filled,#game.clay-aist .slot.filled{background:#f8e8cc;border-style:solid;}
+#game.clay-aist .iconbtn{background:#f3dbb7;color:#734e39;box-shadow:inset 0 3px #fff3dc,0 5px 0 #b48e68;}
+
+/* Предложение: сначала целое, затем ёжик выбивает первое слово. */
+.sentence-lesson{gap:2vh;background:url('assets/clay/meadow-bg.png') center/cover no-repeat;}
+.sentence-hint,.sentence-help{position:relative;z-index:3;color:#6c4834;background:#f5dfbf;border-radius:18px;padding:5px 15px;box-shadow:inset 0 2px #fff4dc,0 4px 0 #b9916d;font-size:clamp(13px,2vw,20px);}
+.sentence-hint{position:absolute;top:7%;left:50%;transform:translateX(-50%);white-space:nowrap;}
+.sentence-help{position:absolute;bottom:3%;left:50%;transform:translateX(-50%);white-space:nowrap;}
+.sentence-line{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);width:max-content;max-width:90%;flex-wrap:nowrap;gap:clamp(5px,1.2vw,15px);font-size:clamp(18px,4vw,48px);}
+.sentence-line span{padding:8px clamp(7px,1.5vw,17px);border-radius:17px;border:3px solid #f9e9ca;background:#edd1a9;color:#67472f;box-shadow:inset 0 3px #fff2d7,0 7px 0 #b88f6b,0 12px 14px #58422c55;white-space:nowrap;}
+.sentence-gap{min-width:0;border-bottom:3px solid #f9e9ca !important;color:#67472f;text-align:center;}
+.sentence-lesson.fallen .sentence-gap{color:transparent;background:#c8a987;box-shadow:inset 0 5px 10px #70543e88,0 3px 0 #a88768;}
+.sentence-gap.filled{color:#67472f !important;background:#edd1a9 !important;box-shadow:inset 0 3px #fff2d7,0 7px 0 #b88f6b,0 12px 14px #58422c55 !important;}
+.sentence-tile{position:absolute;left:15%;top:71%;transform:rotate(-10deg);padding:8px 18px;font-size:clamp(23px,4vw,46px);background:#edc59f;color:#9e3c2d;box-shadow:inset 0 3px #ffe6c6,0 8px 0 #b98b69,0 13px 16px #5b432c66;visibility:hidden;}
+.sentence-lesson.fallen .sentence-tile{visibility:visible;animation:wordFall .5s cubic-bezier(.3,1.5,.5,1) both;}
+.sentence-lesson.complete .sentence-tile{visibility:hidden;}
+.sentence-hedgehog,.sentence-hedgehog-idle{position:absolute;bottom:31%;left:-16%;height:31%;width:auto;z-index:2;pointer-events:none;filter:drop-shadow(0 7px 5px #41372b66);}
+.sentence-lesson.intro .sentence-hedgehog{animation:hedgehogBump 2.1s ease-in forwards;}
+.sentence-lesson.fallen .sentence-hedgehog{left:18%;transform:rotate(390deg);opacity:0;}
+.sentence-hedgehog-idle{left:16%;opacity:0;}
+.sentence-lesson.fallen .sentence-hedgehog-idle{opacity:1;}
+.sentence-bird{position:absolute;left:-25%;top:18%;width:clamp(110px,24vw,300px);height:auto;font-size:inherit;opacity:0;filter:drop-shadow(0 8px 8px #42637b55);}
+.sentence-lesson.flying .sentence-bird{opacity:1;animation:aistFly 4s ease-in-out forwards;}
+.sentence-lesson.flying{background:url('assets/clay/meadow-bg.png') center/cover no-repeat;}
+@keyframes hedgehogBump{0%{left:-16%;transform:rotate(0)}65%{left:15%;transform:rotate(340deg)}80%{left:18%;transform:rotate(380deg) translateY(-14px)}100%{left:18%;transform:rotate(390deg)}}
+@keyframes wordFall{from{top:45%;left:18%;opacity:0;transform:rotate(0) scale(.9)}to{top:71%;left:15%;opacity:1;transform:rotate(-10deg) scale(1)}}
+@keyframes aistFly{0%{left:-25%;top:50%;transform:scale(.75) rotate(-7deg)}52%{left:43%;top:12%;transform:scale(1.1) rotate(-2deg)}100%{left:108%;top:-15%;transform:scale(.65) rotate(-12deg)}}
+@media (max-height:420px){#menu .m-card{top:60%;width:min(30vw,300px)}#menu .m-path{height:18%}.sentence-line{top:43%}.sentence-tile{top:70%}.sentence-hedgehog,.sentence-hedgehog-idle{height:27%}}
+.sentence-lesson:not(.fallen) .sentence-help{visibility:hidden;}
+
+/* Лицо и ручки — самостоятельные элементы, буква остаётся читаемой и подвижной. */
+#game.clay-aist .l-squash .glyph{position:relative;z-index:2;filter:drop-shadow(0 5px 3px #64472f55);}
+#game.clay-aist .l-arm{position:absolute;top:46%;width:20px;height:9px;border-radius:10px;background:#db9d60;box-shadow:inset 0 2px #f9cf8f,0 2px 2px #63432f66;z-index:1;}
+#game.clay-aist .l-arm.left{left:-10px;transform:rotate(-22deg);}
+#game.clay-aist .l-arm.right{right:-10px;transform:rotate(22deg);}
+#game.clay-aist .l-face{position:absolute;top:31%;left:50%;transform:translateX(-50%);display:flex;gap:7px;z-index:3;pointer-events:none;}
+#game.clay-aist .l-face i{display:block;width:6px;height:8px;border-radius:50%;background:#372c2d;box-shadow:1px 1px 0 #fff8df inset,0 1px 1px #5d402f88;}
+#game.clay-aist .letter[data-letter="А"] .l-face{top:44%;gap:12px;}
+
+/* Настоящая лепная рамка заменяет временную CSS-карточку. */
+#menu .m-card{width:min(31vw,335px);aspect-ratio:1;border:0;border-radius:0;background:url('assets/clay/story-card.png') center/100% 100% no-repeat;box-shadow:none;filter:drop-shadow(0 15px 11px #49362777);}
+#menu .m-card::before{display:none;}
+#menu .m-card-content{padding:11% 12% 7%;}
+#menu .m-story-art{height:68%;}
+#menu .m-story-word{background:none;box-shadow:none;border-radius:0;font-size:clamp(25px,4.4vw,50px);line-height:1.1;}

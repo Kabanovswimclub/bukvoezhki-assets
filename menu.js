@@ -12,12 +12,12 @@
 
   var MENU_ASSETS = {
     logo:    'ui/splash/logo.png',
-    bg:      'ui/menu/bg.PNG',
+    bg:      'assets/clay/meadow-bg.png',
     grass:   'ui/menu/grass.PNG',
     trees:   'ui/menu/trees_side.PNG',
     frame:   'ui/menu/frame.PNG',
     hogIdle: 'ui/menu/hedgehog_idle.PNG',
-    hogBall: 'ui/menu/hedgehog_ball.PNG'
+    hogBall: 'assets/clay/hedgehog-ball.png'
   };
 
 function aurl(p){ if(!p) return ''; return (typeof assetURL==='function') ? assetURL(p)
@@ -90,9 +90,14 @@ function aurl(p){ if(!p) return ''; return (typeof assetURL==='function') ? asse
       html='<div class="m-sign"><img src="'+aurl(LETTER_IMAGES[node.letter])+'" alt=""></div>';
     } else {
       var word=node.words[0].word;
-      html='<div class="m-word-letters">'+word.split('').map(function(ch){
-        var s=(typeof LETTER_IMAGES!=='undefined')?LETTER_IMAGES[ch]:null;
-        return s?'<img src="'+aurl(s)+'" alt="">':''; }).join('')+'</div>';
+      if(word==='АИСТ'){
+        html='<img class="m-story-art" src="'+aurl('assets/clay/stork-nest.png')+'" alt="Аист в гнезде">'+
+          '<div class="m-story-word">АИСТ</div>';
+      } else {
+        html='<div class="m-word-letters">'+word.split('').map(function(ch){
+          var s=(typeof LETTER_IMAGES!=='undefined')?LETTER_IMAGES[ch]:null;
+          return s?'<img src="'+aurl(s)+'" alt="">':''; }).join('')+'</div>';
+      }
     }
     c.innerHTML=html;
     card.dataset.index=String(nodes().indexOf(node));

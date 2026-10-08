@@ -47,11 +47,13 @@
     <div class="scatter" id="scatter"></div>
     <div class="wordhold hidden" id="wordHold"></div>
     <div class="sentence-lesson hidden" id="sentenceLesson" aria-label="Составь предложение">
-      <div class="sentence-hint">Помоги слову найти своё место</div>
-      <div class="sentence-line"><span class="sentence-gap" id="sentenceGap">АИСТ</span><span>ВЫСОКО</span><span>ЛЕТИТ</span></div>
-      <div class="sentence-bird" id="sentenceBird" aria-hidden="true">🐦</div>
-      <button class="sentence-tile" id="sentenceTile" type="button">АИСТ</button>
-      <div class="sentence-help">Перетащи слово в начало предложения</div>
+      <div class="sentence-hint">Послушай предложение</div>
+      <div class="sentence-line" id="sentenceLine"></div>
+      <img class="sentence-hedgehog" src="assets/clay/hedgehog-ball.png" alt="" aria-hidden="true">
+      <img class="sentence-hedgehog-idle" src="ui/menu/hedgehog_idle.PNG" alt="" aria-hidden="true">
+      <img class="sentence-bird" id="sentenceBird" src="assets/clay/stork-flying.png" alt="" aria-hidden="true">
+      <button class="sentence-tile" id="sentenceTile" type="button" aria-label="Вернуть слово в предложение"></button>
+      <div class="sentence-help">Перетащи слово на пустое место</div>
     </div>
     <button class="arrow arrow-left hidden" id="btnPrev" title="Предыдущее слово">◀</button>
     <button class="arrow arrow-right hidden" id="btnNext" title="Следующее слово">▶</button>

@@ -27,6 +27,7 @@ function preloadFor(item){
     const cos=COSTUMES[familyOf(ch)]; if(cos){ const im=new Image(); im.src=assetURL(cos); }
   });
   const w=item.audio&&item.audio.word; if(w) getAudio(assetURL(w)).load();
+  const sentence=item.audio&&item.audio.sentence; if(sentence) getAudio(assetURL(sentence)).load();
   if(item.syllableAudio) Object.values(item.syllableAudio).forEach(p=>getAudio(assetURL(p)).load());
   const o=item.object||{}; if(o.image){ const im=new Image(); im.src=assetURL(o.image); }
 }
@@ -115,7 +116,7 @@ function makeLetterEl(ch,i){
   const l=document.createElement('div');
   l.className='letter'+(src?' img':''); l.dataset.letter=ch; l.dataset.fam=fam; l.dataset.token=String(gameToken);
   const glyph = src?`<img class="glyph" src="${assetURL(src)}" alt="${ch}" draggable="false">`:`<span class="glyph">${ch}</span>`;
-  l.innerHTML=`<div class="l-rot">${cos?`<div class="l-costume"><img src="${assetURL(cos)}" alt=""></div>`:''}<div class="l-squash">${glyph}</div></div>`;
+  l.innerHTML=`<div class="l-rot">${cos?`<div class="l-costume"><img src="${assetURL(cos)}" alt=""></div>`:''}<div class="l-squash"><span class="l-arm left"></span><span class="l-arm right"></span>${glyph}<span class="l-face"><i></i><i></i></span></div></div>`;
   if(!src) l.style.background=`var(--c${(i%6)+1})`;
   attachDrag(l); return l;
 }
@@ -124,6 +125,7 @@ function startGame(item){
   gameToken++; clearPendingTimers();
   current=item; filledCount=0; phase=0;
   resetSentenceLesson();
+  $('#game').classList.toggle('clay-aist',item.id==='аист');
   $('#picker').classList.add('hidden'); $('#game').classList.remove('hidden');
   $('#reward').className='reward'; $('#reward').innerHTML='';
   hideArrows(); hideWordHold();
@@ -430,21 +432,44 @@ let sentenceDone=false;
 function resetSentenceLesson(){
   const lesson=$('#sentenceLesson'), tile=$('#sentenceTile'), gap=$('#sentenceGap');
   if(!lesson) return;
-  lesson.classList.add('hidden'); lesson.classList.remove('complete','flying');
+  lesson.classList.add('hidden'); lesson.classList.remove('complete','flying','intro','fallen');
   tile.classList.remove('placed','dragging'); tile.style.transform='';
-  gap.classList.remove('filled'); gap.textContent='АИСТ'; sentenceDone=false;
+  if(gap) gap.classList.remove('filled');
+  sentenceDone=false;
 }
 function showSentenceLesson(){
-  hideWordHold(); $('#sentenceLesson').classList.remove('hidden');
-  const tile=$('#sentenceTile'); tile.focus({preventScroll:true});
+  hideWordHold();
+  const lesson=$('#sentenceLesson'), line=$('#sentenceLine'), tile=$('#sentenceTile');
+  const words=(current.sentence||current.word).trim().split(/\s+/);
+  line.replaceChildren();
+  words.forEach((word,i)=>{
+    const span=document.createElement('span');
+    span.textContent=word.toUpperCase();
+    span.className=i===0?'sentence-gap':'';
+    if(i===0) span.id='sentenceGap';
+    line.appendChild(span);
+  });
+  tile.textContent=words[0].toUpperCase();
+  $('.sentence-hint').textContent='Послушай предложение';
+  lesson.classList.remove('hidden','complete','flying','fallen');
+  lesson.classList.add('intro');
+  playSentence(current);
+  const token=gameToken;
+  T(()=>{
+    if(token!==gameToken||lesson.classList.contains('hidden')) return;
+    lesson.classList.remove('intro'); lesson.classList.add('fallen');
+    $('.sentence-hint').textContent='Ой! Слово выпало';
+    tile.focus({preventScroll:true});
+  },2100);
 }
 function completeSentence(){
-  if(sentenceDone) return;
+  if(sentenceDone||!$('#sentenceLesson').classList.contains('fallen')) return;
   sentenceDone=true;
   const lesson=$('#sentenceLesson');
   $('#sentenceTile').classList.add('placed');
   $('#sentenceGap').classList.add('filled');
   lesson.classList.add('complete');
+  $('.sentence-hint').textContent='Предложение снова целое!';
   playSentence(current);
   T(()=>{ lesson.classList.add('flying'); confettiAt('#sentenceGap'); showArrows(); },1100);
 }
@@ -453,13 +478,20 @@ function playSentence(item){
   if(f){ const a=getAudio(assetURL(f)); a.currentTime=0; a.play().catch(()=>speak(item.sentence,0.85)); }
   else if(item.sentence) speak(item.sentence,0.85);
 }
+function replaySentenceScene(){
+  playSentence(current);
+  const lesson=$('#sentenceLesson');
+  lesson.classList.remove('flying');
+  void lesson.offsetWidth;
+  lesson.classList.add('flying');
+}
 function bindSentenceLesson(){
-  const tile=$('#sentenceTile'), gap=$('#sentenceGap'); let dragging=false,sx=0,sy=0;
-  tile.addEventListener('pointerdown',e=>{ if(sentenceDone) return; dragging=true; sx=e.clientX; sy=e.clientY; tile.setPointerCapture(e.pointerId); tile.classList.add('dragging'); });
+  const tile=$('#sentenceTile'); let dragging=false,sx=0,sy=0;
+  tile.addEventListener('pointerdown',e=>{ if(sentenceDone||!$('#sentenceLesson').classList.contains('fallen')) return; dragging=true; sx=e.clientX; sy=e.clientY; tile.setPointerCapture(e.pointerId); tile.classList.add('dragging'); });
   tile.addEventListener('pointermove',e=>{ if(dragging) tile.style.transform=`translate(${e.clientX-sx}px,${e.clientY-sy}px)`; });
   tile.addEventListener('pointerup',e=>{
     if(!dragging) return; dragging=false; tile.classList.remove('dragging');
-    const r=gap.getBoundingClientRect();
+    const r=$('#sentenceGap').getBoundingClientRect();
     if(e.clientX>=r.left-25&&e.clientX<=r.right+25&&e.clientY>=r.top-25&&e.clientY<=r.bottom+25) completeSentence();
     tile.style.transform='';
   });
@@ -561,7 +593,7 @@ function bindWordHold(){
 /* ---------- Кнопки ---------- */
 function onTap(sel, fn){ $(sel).addEventListener('pointerup', e=>{ e.preventDefault(); fn(e); }); }
 function gotoWord(delta){ const i=WORDS.findIndex(w=>w.id===current.id); const n=(i+delta+WORDS.length)%WORDS.length; startGame(WORDS[n]); }
-onTap('#btnReplay', ()=>{ if(!current) return; if(sentenceDone&&!$('#sentenceLesson').classList.contains('hidden')) playSentence(current); else playWord(current); });
+onTap('#btnReplay', ()=>{ if(!current) return; if(sentenceDone&&!$('#sentenceLesson').classList.contains('hidden')) replaySentenceScene(); else playWord(current); });
 onTap('#btnHome', ()=>{ clearPendingTimers(); resetSentenceLesson(); stopLetterLoop(); stopWordLoop(); stopSylLoop(); kickIdle(); hideWordHold(); $('#game').classList.add('hidden'); showMenu(); });
 onTap('#btnPrev', ()=>gotoWord(-1));
 onTap('#btnNext', ()=>gotoWord(1));
