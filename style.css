@@ -317,3 +317,26 @@ body{
 #menu .m-card-content{padding:11% 12% 7%;}
 #menu .m-story-art{height:68%;}
 #menu .m-story-word{background:none;box-shadow:none;border-radius:0;font-size:clamp(25px,4.4vw,50px);line-height:1.1;}
+
+/* Дальний план должен поддерживать карточки и буквы, не конкурировать с ними. */
+#menu .m-bg{filter:blur(8px) saturate(.55) brightness(1.06);transform:scale(1.03);}
+#menu::after{content:"";position:absolute;inset:0;background:#e6edf188;z-index:1;pointer-events:none;}
+#game.clay-aist .stage{isolation:isolate;}
+#game.clay-aist .stage::after{content:"";position:absolute;inset:0;z-index:0;backdrop-filter:blur(9px) saturate(.5);background:#e7ece58c;pointer-events:none;}
+.sentence-lesson{isolation:isolate;background:#c4d9db;}
+.sentence-lesson::before{content:"";position:absolute;inset:-12px;z-index:0;background:url('assets/clay/meadow-bg.png') center/cover no-repeat;filter:blur(10px) saturate(.48) brightness(1.08);opacity:.68;pointer-events:none;}
+.sentence-lesson.flying{background:#c4d9db;}
+
+/* Персонаж появляется только после пробуждения буквы. */
+#game.clay-aist .l-face,#game.clay-aist .l-arm{opacity:0;transition:opacity .18s ease;}
+#game.clay-aist .letter.awake .l-face,#game.clay-aist .letter.awake .l-arm{opacity:1;}
+#game.clay-aist .letter.awake .l-squash::before,#game.clay-aist .letter.awake .l-squash::after{content:"";position:absolute;bottom:-10px;width:9px;height:22px;border-radius:8px;background:#c9885a;box-shadow:inset 2px 0 #efbc81,0 2px 2px #5a3e2a55;z-index:1;}
+#game.clay-aist .letter.awake .l-squash::before{left:24%;transform:rotate(16deg);}
+#game.clay-aist .letter.awake .l-squash::after{right:24%;transform:rotate(-16deg);}
+
+/* После столкновения ёжик откатывается в угол и не закрывает фразу. */
+.sentence-lesson.fallen .sentence-hedgehog-idle{left:auto;right:3%;bottom:7%;height:19%;opacity:1;}
+.sentence-lesson.fallen .sentence-hedgehog{opacity:0;}
+
+/* Завершившаяся анимация не должна удерживать transform и блокировать drag. */
+.sentence-lesson.fallen .sentence-tile{animation:wordFall .5s cubic-bezier(.3,1.5,.5,1);}

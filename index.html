@@ -66,7 +66,20 @@
 <script src="menu.js"></script>
 <script>
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+  addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', {updateViaCache:'none'}).then(reg => {
+      reg.update().catch(() => {});
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) reg.update().catch(() => {});
+      });
+    }).catch(() => {});
+  });
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!sessionStorage.getItem('clay-v3-reloaded')) {
+      sessionStorage.setItem('clay-v3-reloaded', '1');
+      location.reload();
+    }
+  });
 }
 </script>
 </body>

@@ -17,6 +17,10 @@ function familyOf(ch){ return FAMILY[ch]||'voiceless'; }
 
 const COSTUMES={ vowel:'costumes/wings.png', voiceless:'costumes/fins.png',
   sonor:'costumes/critter.png', voiced:'costumes/beetle.png', hiss:'costumes/snake.png' };
+const AIST_CLAY_LETTERS={
+  'А':'assets/clay/letter-a.png', 'И':'assets/clay/letter-i.png',
+  'С':'assets/clay/letter-s.png', 'Т':'assets/clay/letter-t.png'
+};
 
 /* ---------- Аудио ---------- */
 const audioCache={};
@@ -24,6 +28,7 @@ function getAudio(url){ if(!audioCache[url]){ const a=new Audio(url); a.preload=
 function preloadFor(item){
   [...new Set(item.word)].forEach(ch=>{
     const f=LETTER_SOUNDS[ch]; if(f) getAudio(assetURL(f)).load();
+    if(item.id==='аист'&&AIST_CLAY_LETTERS[ch]){ const im=new Image(); im.src=assetURL(AIST_CLAY_LETTERS[ch]); }
     const cos=COSTUMES[familyOf(ch)]; if(cos){ const im=new Image(); im.src=assetURL(cos); }
   });
   const w=item.audio&&item.audio.word; if(w) getAudio(assetURL(w)).load();
@@ -112,7 +117,7 @@ function T(fn,ms){ const id=setTimeout(fn,ms); pendingTimers.push(id); return id
 function clearPendingTimers(){ pendingTimers.forEach(clearTimeout); pendingTimers=[]; }
 
 function makeLetterEl(ch,i){
-  const fam=familyOf(ch), src=LETTER_IMAGES[ch], cos=COSTUMES[fam];
+  const fam=familyOf(ch), src=current&&current.id==='аист'?AIST_CLAY_LETTERS[ch]:LETTER_IMAGES[ch], cos=COSTUMES[fam];
   const l=document.createElement('div');
   l.className='letter'+(src?' img':''); l.dataset.letter=ch; l.dataset.fam=fam; l.dataset.token=String(gameToken);
   const glyph = src?`<img class="glyph" src="${assetURL(src)}" alt="${ch}" draggable="false">`:`<span class="glyph">${ch}</span>`;
@@ -227,7 +232,7 @@ function startWander(){
 function stopWander(){
   wandering=false;
   if(wanderRAF){ cancelAnimationFrame(wanderRAF); wanderRAF=null; }
-  movers.forEach(m=>{ const r=rotEl(m.el); if(r){ r.style.transition='transform .25s ease'; r.style.transform=`rotate(${m.baseRot}deg)`; } });
+  movers.forEach(m=>{ m.el.classList.remove('awake'); const r=rotEl(m.el); if(r){ r.style.transition='transform .25s ease'; r.style.transform=`rotate(${m.baseRot}deg)`; } });
   movers=[];
 }
 
@@ -236,7 +241,7 @@ function wanderFrame(now){
   let dt=(now-lastT)/1000; lastT=now; if(dt>0.05) dt=0.05;
   const t=now/1000, lw=78, lh=90, maxX=zone.W-lw, maxY=zone.H-lh;
   movers.forEach(m=>{
-    if(!m.awake){ if(now-wanderStartTime>=m.wakeAt){ m.awake=true; const c=costumeEl(m.el); if(c) c.classList.add('show'); } else return; }
+    if(!m.awake){ if(now-wanderStartTime>=m.wakeAt){ m.awake=true; m.el.classList.add('awake'); const c=costumeEl(m.el); if(c) c.classList.add('show'); } else return; }
     if(m.fam==='voiceless'){ const a=Math.atan2(m.vy,m.vx)+rand(-0.7,0.7)*dt; m.vx=Math.cos(a)*m.sp; m.vy=Math.sin(a)*m.sp; }
     if(m.fam==='voiced'){ m.vx+=rand(-50,50)*dt; m.vy+=rand(-50,50)*dt; }
     const cx=m.x+lw/2, cy=m.y+lh/2;
@@ -433,7 +438,7 @@ function resetSentenceLesson(){
   const lesson=$('#sentenceLesson'), tile=$('#sentenceTile'), gap=$('#sentenceGap');
   if(!lesson) return;
   lesson.classList.add('hidden'); lesson.classList.remove('complete','flying','intro','fallen');
-  tile.classList.remove('placed','dragging'); tile.style.transform='';
+  tile.classList.remove('placed','dragging'); tile.style.transform=''; tile.style.animation='';
   if(gap) gap.classList.remove('filled');
   sentenceDone=false;
 }
@@ -487,12 +492,14 @@ function replaySentenceScene(){
 }
 function bindSentenceLesson(){
   const tile=$('#sentenceTile'); let dragging=false,sx=0,sy=0;
-  tile.addEventListener('pointerdown',e=>{ if(sentenceDone||!$('#sentenceLesson').classList.contains('fallen')) return; dragging=true; sx=e.clientX; sy=e.clientY; tile.setPointerCapture(e.pointerId); tile.classList.add('dragging'); });
-  tile.addEventListener('pointermove',e=>{ if(dragging) tile.style.transform=`translate(${e.clientX-sx}px,${e.clientY-sy}px)`; });
+  tile.addEventListener('pointerdown',e=>{ if(sentenceDone||!$('#sentenceLesson').classList.contains('fallen')) return; dragging=true; sx=e.clientX; sy=e.clientY; tile.style.animation='none'; tile.setPointerCapture(e.pointerId); tile.classList.add('dragging'); });
+  tile.addEventListener('pointermove',e=>{ if(dragging) tile.style.transform=`translate(${e.clientX-sx}px,${e.clientY-sy}px) rotate(-10deg)`; });
   tile.addEventListener('pointerup',e=>{
     if(!dragging) return; dragging=false; tile.classList.remove('dragging');
-    const r=$('#sentenceGap').getBoundingClientRect();
-    if(e.clientX>=r.left-25&&e.clientX<=r.right+25&&e.clientY>=r.top-25&&e.clientY<=r.bottom+25) completeSentence();
+    const r=$('#sentenceGap').getBoundingClientRect(), t=tile.getBoundingClientRect();
+    const overlapX=Math.max(0,Math.min(r.right,t.right)-Math.max(r.left,t.left));
+    const overlapY=Math.max(0,Math.min(r.bottom,t.bottom)-Math.max(r.top,t.top));
+    if(overlapX>Math.min(r.width,t.width)*.3&&overlapY>Math.min(r.height,t.height)*.3) completeSentence();
     tile.style.transform='';
   });
   tile.addEventListener('pointercancel',()=>{dragging=false;tile.classList.remove('dragging');tile.style.transform='';});

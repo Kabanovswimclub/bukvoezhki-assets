@@ -1,5 +1,5 @@
-const CACHE='bukvoezhka-clay-v2';
-const CORE=['./','./index.html','./style.css','./words.js','./app.js','./splash.js','./menu.js','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png','./assets/clay/meadow-bg.png','./assets/clay/story-card.png','./assets/clay/stork-nest.png','./assets/clay/stork-flying.png','./assets/clay/hedgehog-ball.png'];
+const CACHE='bukvoezhka-clay-v3';
+const CORE=['./','./index.html','./style.css','./words.js','./app.js','./splash.js','./menu.js','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png','./assets/clay/meadow-bg.png','./assets/clay/story-card.png','./assets/clay/stork-nest.png','./assets/clay/stork-flying.png','./assets/clay/hedgehog-ball.png','./assets/clay/letter-a.png','./assets/clay/letter-i.png','./assets/clay/letter-s.png','./assets/clay/letter-t.png'];
 
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting()));
